@@ -105,7 +105,7 @@ pub struct Patch {
 }
 
 impl Patch {
-    fn mean(&self) -> f64 {
+    pub fn mean(&self) -> f64 {
         if self.values.is_empty() {
             255.0
         } else {
@@ -216,15 +216,17 @@ pub fn column_baseline(patches: &[&Patch]) -> Option<Patch> {
     if patches.len() < 3 {
         return None;
     }
-    const INK_LEVEL: f64 = 40.0;
-
-    // Score each row by how much darker it is than the brightest row.
-    let means: Vec<f64> = patches.iter().map(|p| p.mean()).collect();
-    let paper = means.iter().copied().fold(0.0f64, f64::max);
+    // A printed letter darkens a row's mean by well under 100 levels even in
+    // bold fonts; a pencil mark doubles that. Rows within this band of the
+    // brightest row are clean and vote for the baseline.
+    // Score each row by its deep-ink fraction: printed strokes barely move
+    // it, a pencil mark dominates it. Rows like the cleanest one vote.
+    let fractions: Vec<f64> = patches.iter().map(|p| deep_ink_fraction(p)).collect();
+    let cleanest = fractions.iter().copied().fold(f64::MAX, f64::min);
     let clean: Vec<&Patch> = patches
         .iter()
-        .zip(&means)
-        .filter(|(_, mean)| paper - **mean < INK_LEVEL)
+        .zip(&fractions)
+        .filter(|(_, fraction)| **fraction - cleanest < 0.25)
         .map(|(patch, _)| *patch)
         .collect();
 
@@ -317,20 +319,58 @@ pub fn measure_group(
         })
         .collect();
 
+    // A column whose rows are almost all marked has no clean reference: its
+    // median is the mark itself, and subtracting it erases real answers (a
+    // column of five C marks would read blank). Measure such columns on
+    // their own, like ungrouped blocks.
+    let clean_counts: Vec<usize> = (0..columns)
+        .map(|column| {
+            let stacked: Vec<&Patch> = patches.iter().filter_map(|row| row.get(column)).collect();
+            column_clean_count(&stacked)
+        })
+        .collect();
+
     patches
         .par_iter()
         .map(|row| {
             row.iter()
                 .enumerate()
-                .map(
-                    |(column, patch)| match baselines.get(column).and_then(|b| b.as_ref()) {
-                        Some(baseline) => measure_against(patch, baseline, options),
-                        None => measure_solo(patch, options),
-                    },
-                )
+                .map(|(column, patch)| match baselines.get(column).and_then(|b| b.as_ref()) {
+                    Some(baseline) if clean_counts.get(column).is_some_and(|&n| n >= 2) => {
+                        measure_against(patch, baseline, options)
+                    }
+                    _ => measure_solo(patch, options),
+                })
                 .collect()
         })
         .collect()
+}
+
+/// Fraction of a patch that is deeply darkened relative to its own brightest
+/// pixels: near zero for printed strokes, large for a pencil mark.
+fn deep_ink_fraction(patch: &Patch) -> f64 {
+    let paper = patch.values.iter().copied().fold(0.0f64, f64::max);
+    let total = patch.values.len().max(1) as f64;
+    patch
+        .values
+        .iter()
+        .filter(|v| paper - **v > 60.0)
+        .count() as f64
+        / total
+}
+
+/// Number of rows light enough to vote for a column baseline: the same test
+/// `column_baseline` uses to pick its clean rows.
+fn column_clean_count(patches: &[&Patch]) -> usize {
+    if patches.len() < 3 {
+        return 0;
+    }
+    let fractions: Vec<f64> = patches.iter().map(|p| deep_ink_fraction(p)).collect();
+    let cleanest = fractions.iter().copied().fold(f64::MAX, f64::min);
+    fractions
+        .iter()
+        .filter(|f| **f - cleanest < 0.25)
+        .count()
 }
 
 /// Samples a rectangle at its native template resolution.
@@ -418,6 +458,32 @@ pub fn decide(cells: &[CellMeasure], options: DecideOptions) -> Decision {
             reason: near.then_some(ReviewReason::NearBlank),
         };
     }
+    // Below the confident mark level the reading is not a mark: baseline
+    // subtraction leaves a few percent of residual on thick printed letters,
+    // and reading the densest letter of a blank row would be wrong. Anything
+    // under `confident_score` is blank unless ink is also present in rivals.
+    if best < options.confident_score {
+        return Decision {
+            best: None,
+            alternates: Vec::new(),
+            confidence: best / options.confident_score,
+            needs_review: true,
+            reason: Some(ReviewReason::Faint),
+        };
+    }
+
+    // Baseline subtraction leaves a few percent of speckle on bracket edges;
+    // a real pencil mark measures ten times that. A winner this weak is the
+    // paper speaking, not a mark: report nothing and let review decide.
+    if best < options.confident_score * 2.5 {
+        return Decision {
+            best: None,
+            alternates: Vec::new(),
+            confidence: (best / (options.confident_score * 2.5)).clamp(0.0, 1.0),
+            needs_review: true,
+            reason: Some(ReviewReason::Faint),
+        };
+    }
 
     let rival_floor = (best * options.rival_ratio).max(options.min_score);
     let alternates: Vec<usize> = order
@@ -438,14 +504,37 @@ pub fn decide(cells: &[CellMeasure], options: DecideOptions) -> Decision {
         // Two cells with the same score cannot be told apart; report both as
         // present rather than silently keeping the first.
         Some(ReviewReason::Multiple)
-    } else if best < options.confident_score || separation < options.min_separation {
+    } else if separation < options.min_separation {
+        // The top cells are too close to rank. Two causes: a double mark
+        // (rivals already reported) or printed letters of nearly equal
+        // density, which is what a blank row of a thick-printed template
+        // looks like after measurement. A pencil mark pushes its cell far
+        // above the printed-letter level, so an unconvincing winner this
+        // close to `confident_score` is paper, not pencil.
+        if best < options.confident_score * 6.0 {
+            return Decision {
+                best: None,
+                alternates: Vec::new(),
+                confidence: strength,
+                needs_review: true,
+                reason: Some(ReviewReason::NearBlank),
+            };
+        }
         Some(ReviewReason::Faint)
     } else {
         None
     };
 
+    // A read with no clear separation is either a double mark (rivals above
+    // report both) or the printed paper: letters differ in ink density by
+    // exactly this much on thick-printed templates. A pencil mark adds solid
+    // coverage that pushes the winner far above `confident_score`, so a
+    // low-separation winner near that level is the paper speaking, not a
+    // pencil. Report no selection and let review catch it.
+    let unconvincing = separation < options.min_separation
+        && best < options.confident_score * 6.0;
     Decision {
-        best: Some(order[0]),
+        best: if unconvincing { None } else { Some(order[0]) },
         alternates,
         confidence: (0.55 * separation + 0.45 * strength).clamp(0.0, 1.0),
         needs_review: reason.is_some(),

@@ -7,7 +7,6 @@ use crate::geometry::{Homography, Rect};
 use crate::gray::Gray;
 use crate::registration::{self, AlignmentMode, DetectOptions, Registration};
 use crate::template::{Block, BlockKind, Page, Template};
-use rayon::prelude::*;
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -198,18 +197,17 @@ fn read_page_with_mode(
         AlignmentMode::CornerRegistered => 1.0,
         AlignmentMode::ContentAligned => 0.7,
     };
-    // Measure every question block in one parallel sweep: one block's cells are
-    // already parallel, but a wide sheet has many small blocks and the parallel
-    // overhead of a four-cell block dwarfs its work.
+    // Question blocks that share a template column are measured against that
+    // column's baseline: the median of the clean rows removes the printed
+    // letter and bracket, which otherwise dominate thick-printed templates and
+    // make a blank sheet read as letters being darker than each other. Blocks
+    // without enough siblings keep the absolute measurement.
     let question_blocks: Vec<&Block> = page
         .blocks
         .iter()
         .filter(|b| b.kind == BlockKind::Question)
         .collect();
-    let measured: Vec<Vec<crate::fill::CellMeasure>> = question_blocks
-        .par_iter()
-        .map(|block| fill::measure_solo_block(scan, transform, block, options.measure))
-        .collect();
+    let measured = measure_questions(scan, transform, &question_blocks, options.measure);
     let mut selections = Vec::new();
     for (block, cells) in question_blocks.iter().zip(&measured) {
         let mut s = selection(block, cells, options.decide);
@@ -388,6 +386,73 @@ fn read_absent(scan: &Gray, transform: &Homography, block: &Block, options: Opti
         needs_review: (level - options.measure.ink_margin * 3.0).abs() < 25.0,
         reason: None,
     }
+}
+
+/// Measures question blocks, subtracting a column baseline when several
+/// blocks share the same template column (cells at nearly the same x).
+///
+/// The baseline is the median of the clean rows in that column: it captures
+/// exactly the printed letter and bracket, which are identical on every row,
+/// and leaves only the pencil mark. Thick-printed templates score ~0.2 solid
+/// on a blank sheet without this subtraction, which makes an empty cell beat
+/// `min_score` and reads letters instead of marks. Groups smaller than three
+/// siblings cannot build a baseline and fall back to the absolute measure.
+fn measure_questions(
+    scan: &Gray,
+    transform: &Homography,
+    blocks: &[&Block],
+    options: crate::fill::MeasureOptions,
+) -> Vec<Vec<crate::fill::CellMeasure>> {
+    // Group by column: blocks whose first-row cell edges all sit within
+    // `TOLERANCE` px of the group's representative form one group. Template
+    // generators jitter edges by a pixel between rows, so exact signatures
+    // would split one printed column into fragments.
+    const TOLERANCE: f64 = 3.0;
+
+    let mut order: Vec<usize> = (0..blocks.len()).collect();
+    order.sort_by_key(|&i| (blocks[i].cells.first().map_or(0.0, |c| c.rect.x0) * 10.0) as i64);
+
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    for index in order {
+        let block = blocks[index];
+        let edges: Vec<f64> = block.cells.iter().map(|c| c.rect.x0).collect();
+        let fits = |group: &Vec<usize>| -> bool {
+            let representative = blocks[group[0]];
+            let rep: Vec<f64> = representative.cells.iter().map(|c| c.rect.x0).collect();
+            rep.len() == edges.len()
+                && rep
+                    .iter()
+                    .zip(&edges)
+                    .all(|(a, b)| (a - b).abs() <= TOLERANCE)
+        };
+        match groups.iter_mut().rev().find(|group| fits(group)) {
+            Some(group) => group.push(index),
+            None => groups.push(vec![index]),
+        }
+    }
+
+    let mut measured: Vec<Option<Vec<crate::fill::CellMeasure>>> =
+        vec![None; blocks.len()];
+    for members in &groups {
+        let siblings: Vec<&Block> = members.iter().map(|&i| blocks[i]).collect();
+        if siblings.len() >= 3 {
+            for (&index, cells) in members
+                .iter()
+                .zip(fill::measure_group(scan, transform, &siblings, options))
+            {
+                measured[index] = Some(cells);
+            }
+        } else {
+            for (&index, cells) in members.iter().zip(
+                siblings
+                    .iter()
+                    .map(|block| fill::measure_solo_block(scan, transform, block, options)),
+            ) {
+                measured[index] = Some(cells);
+            }
+        }
+    }
+    measured.into_iter().map(|cells| cells.unwrap_or_default()).collect()
 }
 
 fn selection(block: &Block, cells: &[CellMeasure], options: DecideOptions) -> Selection {

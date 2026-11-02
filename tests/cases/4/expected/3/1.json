@@ -25,42 +25,42 @@
       "name": "S#1",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 1.0
     },
     {
       "question": 2,
       "name": "S#2",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 1.0
     },
     {
       "question": 3,
       "name": "S#3",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.89
+      "confidence": 0.99
     },
     {
       "question": 4,
       "name": "S#4",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.99
     },
     {
       "question": 5,
       "name": "S#5",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 1.0
     },
     {
       "question": 6,
       "name": "S#6",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.89
+      "confidence": 0.99
     }
   ],
   "multiple": [

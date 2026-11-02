@@ -1,0 +1,280 @@
+{
+  "page": 0,
+  "template_id": "6db432f7858c4d2a88bc48becb62acaa",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 3.0,
+    "rotation_deg": 0.03,
+    "scale_x": 1.002,
+    "scale_y": 1.002
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.84
+  },
+  "candidate_number": {
+    "value": "1107180926",
+    "digits": [
+      "1",
+      "1",
+      "0",
+      "7",
+      "1",
+      "8",
+      "0",
+      "9",
+      "2",
+      "6"
+    ],
+    "needs_review": false
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 31,
+      "name": "S#31",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 32,
+      "name": "S#32",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 33,
+      "name": "S#33",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 34,
+      "name": "S#34",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 35,
+      "name": "S#35",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 36,
+      "name": "S#36",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 37,
+      "name": "S#37",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 38,
+      "name": "S#38",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 39,
+      "name": "S#39",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 40,
+      "name": "S#40",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.85
+    },
+    {
+      "question": 41,
+      "name": "S#41",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.54
+    },
+    {
+      "question": 42,
+      "name": "S#42",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 43,
+      "name": "S#43",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 44,
+      "name": "S#44",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 45,
+      "name": "S#45",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.96
+    },
+    {
+      "question": 46,
+      "name": "S#46",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.97
+    },
+    {
+      "question": 47,
+      "name": "S#47",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.96
+    },
+    {
+      "question": 48,
+      "name": "S#48",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.64
+    },
+    {
+      "question": 49,
+      "name": "S#49",
+      "needs_review": false,
+      "confidence": 0.68
+    },
+    {
+      "question": 50,
+      "name": "S#50",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 51,
+      "name": "S#51",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 52,
+      "name": "S#52",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 53,
+      "name": "S#53",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 54,
+      "name": "S#54",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.26
+    },
+    {
+      "question": 55,
+      "name": "S#55",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.98
+    },
+    {
+      "question": 56,
+      "name": "S#56",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 57,
+      "name": "S#57",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 58,
+      "name": "S#58",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 59,
+      "name": "S#59",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
+    },
+    {
+      "question": 60,
+      "name": "S#60",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.77
+    },
+    {
+      "question": 61,
+      "name": "S#61",
+      "selected": "E",
+      "needs_review": false,
+      "confidence": 0.96
+    },
+    {
+      "question": 62,
+      "name": "S#62",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.97
+    },
+    {
+      "question": 63,
+      "name": "S#63",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 64,
+      "name": "S#64",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.26
+    },
+    {
+      "question": 65,
+      "name": "S#65",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 1.0
+    }
+  ],
+  "review_count": 11,
+  "overlay": "0000ccd9:8f8014c228175642"
+}
