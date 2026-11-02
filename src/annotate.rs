@@ -406,7 +406,11 @@ pub fn save_annotated(image: &RgbImage, path: &std::path::Path) -> std::io::Resu
     let mut encoder = png::Encoder::new(writer, image.width(), image.height());
     encoder.set_color(png::ColorType::Rgb);
     encoder.set_depth(png::BitDepth::Eight);
-    encoder.set_compression(png::Compression::High);
+    // Compression level only changes size and encode time, never pixels: PNG
+    // is lossless at every level. High spends ~170 ms per sheet on a 2 MP scan
+    // to save ~45% of the file; Fast spends ~8 ms, which keeps the annotated
+    // output from dominating the pipeline.
+    encoder.set_compression(png::Compression::Fast);
     let mut writer = encoder.write_header()?;
     writer.write_image_data(image.as_raw())?;
     writer.finish()?;

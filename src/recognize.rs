@@ -7,6 +7,7 @@ use crate::geometry::{Homography, Rect};
 use crate::gray::Gray;
 use crate::registration::{self, AlignmentMode, DetectOptions, Registration};
 use crate::template::{Block, BlockKind, Page, Template};
+use rayon::prelude::*;
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -197,10 +198,21 @@ fn read_page_with_mode(
         AlignmentMode::CornerRegistered => 1.0,
         AlignmentMode::ContentAligned => 0.7,
     };
+    // Measure every question block in one parallel sweep: one block's cells are
+    // already parallel, but a wide sheet has many small blocks and the parallel
+    // overhead of a four-cell block dwarfs its work.
+    let question_blocks: Vec<&Block> = page
+        .blocks
+        .iter()
+        .filter(|b| b.kind == BlockKind::Question)
+        .collect();
+    let measured: Vec<Vec<crate::fill::CellMeasure>> = question_blocks
+        .par_iter()
+        .map(|block| fill::measure_solo_block(scan, transform, block, options.measure))
+        .collect();
     let mut selections = Vec::new();
-    for block in page.blocks.iter().filter(|b| b.kind == BlockKind::Question) {
-        let cells = fill::measure_solo_block(scan, transform, block, options.measure);
-        let mut s = selection(block, &cells, options.decide);
+    for (block, cells) in question_blocks.iter().zip(&measured) {
+        let mut s = selection(block, cells, options.decide);
         s.confidence *= weight;
         selections.push(s);
     }

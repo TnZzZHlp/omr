@@ -104,7 +104,7 @@ impl Rect {
 /// Projective mapping from template coordinates to image coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct Homography {
-    m: [f64; 9],
+    pub(crate) m: [f64; 9],
 }
 
 impl Homography {
@@ -128,6 +128,13 @@ impl Homography {
 
     pub fn coefficients(&self) -> [f64; 9] {
         self.m
+    }
+
+    /// True when the transform maps the unit w-row to 1 everywhere, so points
+    /// can be advanced by adding the column step instead of re-applying the
+    /// full projection.
+    pub fn is_affine(&self) -> bool {
+        self.m[6].abs() < 1e-12 && self.m[7].abs() < 1e-12
     }
 
     pub fn apply(&self, p: Point) -> Point {

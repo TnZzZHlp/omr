@@ -6,6 +6,7 @@
 //! barcode band.
 
 use crate::error::{Error, Result};
+use rayon::prelude::*;
 use crate::geometry::{Homography, Point, Rect};
 use crate::gray::Gray;
 
@@ -69,22 +70,78 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
     let rows = area.height().round().max(1.0) as usize;
     let cols = area.width().round().max(1.0) as usize;
 
-    let mut ink = vec![vec![0.0f64; cols]; rows];
-    for (y, line) in ink.iter_mut().enumerate() {
-        let ty = area.y0 + y as f64;
-        for (x, value) in line.iter_mut().enumerate() {
-            let tx = area.x0 + x as f64;
-            let p = transform.apply(Point::new(tx, ty));
-            *value = (255.0 - scan.sample(p)) / 255.0;
+    // The lattice steps are constant under an affine transform: the x taps of
+    // the bilinear blend are one lattice shared by every row, each row only
+    // picks two scan rows and a weight. That removes the per-sample transform
+    // apply, floor and clamp and leaves plain indexed blends; only a genuinely
+    // projective fit falls back to per-point sampling.
+    let affine = transform.is_affine();
+    let step_x = transform.m[0] / transform.m[8];
+    // Structure of arrays: the blend loop loads three contiguous lanes and
+    // vectorizes; a tuple-of-three interleaves padding between lanes.
+    let col_taps: Option<(Vec<u32>, Vec<u32>, Vec<f64>)> = if affine {
+        let (mut lefts, mut rights, mut weights) =
+            (Vec::with_capacity(cols), Vec::with_capacity(cols), Vec::with_capacity(cols));
+        let mut px = transform.apply(Point::new(area.x0, area.y0)).x;
+        for _ in 0..cols {
+            let x0 = ((px - 0.5).floor() as isize).clamp(0, scan.width() as isize - 1);
+            let fx = px - 0.5 - x0 as f64;
+            let x1 = (x0 + 1).min(scan.width() as isize - 1);
+            lefts.push(x0 as u32);
+            rights.push(x1 as u32);
+            weights.push(fx);
+            px += step_x;
         }
-    }
+        Some((lefts, rights, weights))
+    } else {
+        None
+    };
+    let col_taps = col_taps.as_ref();
+    let mut ink = vec![0.0f64; rows * cols];
+    let pixels = scan.pixels();
+    let stride = scan.width();
+    ink.par_chunks_mut(cols)
+        .enumerate()
+        .for_each(|(y, line)| {
+        let ty = area.y0 + y as f64;
+        match col_taps {
+            Some((lefts, rights, weights)) => {
+                let sy = transform.apply(Point::new(area.x0, ty)).y - 0.5;
+                let row_y = sy.floor();
+                let fy = sy - row_y;
+                let y0 = (row_y as isize).clamp(0, scan.height() as isize - 1) as usize;
+                let y1 = (row_y as isize + 1).clamp(0, scan.height() as isize - 1) as usize;
+                let (row_top, row_bottom) = (y0 * stride, y1 * stride);
+                let top_w = 1.0 - fy;
+                let scale = 1.0 / 255.0;
+                for (x, ((&xa, &xb), &fx)) in
+                    lefts.iter().zip(rights.iter()).zip(weights.iter()).enumerate()
+                {
+                    let value = &mut line[x];
+                    let w_l = 1.0 - fx;
+                    let top = (f64::from(pixels[row_top + xa as usize]) * w_l
+                        + f64::from(pixels[row_top + xb as usize]) * fx) * top_w;
+                    let bottom = (f64::from(pixels[row_bottom + xa as usize]) * w_l
+                        + f64::from(pixels[row_bottom + xb as usize]) * fx) * fy;
+                    *value = 255.0 * scale - (top + bottom) * scale;
+                }
+            }
+            None => {
+                for (x, value) in line.iter_mut().enumerate() {
+                    let tx = area.x0 + x as f64;
+                    let p = transform.apply(Point::new(tx, ty));
+                    *value = (255.0 - scan.sample(p)) / 255.0;
+                }
+            }
+        }
+    });
 
     // A barcode row changes from ink to paper many times across the block; a row
     // of text changes a few times and a blank row not at all. Counting those
     // transitions therefore finds the symbol rows even when a line of text is
     // darker overall.
     let transitions: Vec<usize> = ink
-        .iter()
+        .chunks(cols)
         .map(|line| {
             line.windows(2)
                 .filter(|pair| (pair[0] > 0.5) != (pair[1] > 0.5))
@@ -112,8 +169,8 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
             }
         }
         if let Some(begin) = start_row {
-            if ink.len() - begin >= 6 {
-                bands.push((begin, ink.len() - 1));
+            if rows - begin >= 6 {
+                bands.push((begin, rows - 1));
             }
         }
     }
@@ -129,7 +186,7 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
         // varies with the printer, so the horizontal extent is measured from the
         // band rather than taken from the template.
         let mut column_ink = vec![0.0f64; cols];
-        for line in &ink[top..=bottom] {
+        for line in ink[top * cols..(bottom + 1) * cols].chunks(cols) {
             for (target, value) in column_ink.iter_mut().zip(line) {
                 *target += *value;
             }
@@ -146,7 +203,7 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
             continue;
         };
         let mut profile = vec![0.0f64; cols];
-        for line in &ink[top..=bottom] {
+        for line in ink[top * cols..(bottom + 1) * cols].chunks(cols) {
             for (target, value) in profile.iter_mut().zip(line) {
                 *target += value;
             }

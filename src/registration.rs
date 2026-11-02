@@ -711,40 +711,29 @@ fn locate_by_patch(
     // A fine grid over a huge window is the whole cost of a failed darkness
     // search; a mark sits within about half a stamp of where the template says.
     let span = (radius / 2).clamp(12, 40);
-    let mut best: Option<(f64, isize, isize)> = None;
     // Coarse pass on a quarter grid, then a fine pass around the winner: a full
     // one-pixel grid over this window costs tens of millions of multiply-adds per
     // corner, and the response surface is smooth enough that two stages find it.
     let coarse = 6;
-    for dy in (-span..=span).step_by(coarse as usize) {
-        for dx in (-span..=span).step_by(coarse as usize) {
-            let tx = centre_x + dx;
-            let ty = centre_y + dy;
-            if tx < x0 || ty < y0 || tx + pw as isize > x1 || ty + ph as isize > y1 {
-                continue;
-            }
-            let score = correlation(scan, tx, ty, patch);
-            if best.map_or(true, |b| score > b.0) {
-                best = Some((score, tx, ty));
-            }
-        }
-    }
-    if let Some((_, bx, by)) = best {
+    let stats = StampStats::build(patch);
+    let points = (-span..=span)
+        .step_by(coarse as usize)
+        .flat_map(|dy| (-span..=span).step_by(coarse as usize).map(move |dx| (centre_x + dx, centre_y + dy)));
+    let best = correlation_grid(scan, patch, &stats, points);
+    let best = if let Some((_, bx, by)) = best {
         let fine = coarse.min(4);
-        for dy in -fine..=fine {
-            for dx in -fine..=fine {
-                let tx = bx + dx;
-                let ty = by + dy;
-                if tx < x0 || ty < y0 || tx + pw as isize > x1 || ty + ph as isize > y1 {
-                    continue;
-                }
-                let score = correlation(scan, tx, ty, patch);
-                if score > best.unwrap_or((0.0, 0, 0)).0 {
-                    best = Some((score, tx, ty));
-                }
+        let points = (-fine..=fine)
+            .flat_map(|dy| (-fine..=fine).map(move |dx| (bx + dx, by + dy)));
+        correlation_grid(scan, patch, &stats, points).map_or(best, |fine_best| {
+            if fine_best.0 > best.unwrap_or((0.0, 0, 0)).0 {
+                Some(fine_best)
+            } else {
+                best
             }
-        }
-    }
+        })
+    } else {
+        best
+    };
 
     let (score, tx, ty) = best?;
     if score < options.min_patch_score {
@@ -776,6 +765,77 @@ fn locate_by_patch(
 /// the overall brightness of the scan, which varies between scanners.
 pub fn correlation_at_pub(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64 {
     correlation(scan, x, y, patch)
+}
+
+/// The stamp's own sums: `sum_p`, `sum_pp` and the per-row pixel pointer
+/// arithmetic never change across a correlation sweep, so they are computed
+/// once instead of once per grid point.
+struct StampStats {
+    sum_p: f64,
+    sum_pp: f64,
+    n: f64,
+}
+
+impl StampStats {
+    fn build(patch: &Gray2) -> Self {
+        let (mut sum_p, mut sum_pp) = (0u64, 0u64);
+        for &value in &patch.pixels {
+            let v = u64::from(value);
+            sum_p += v;
+            sum_pp += v * v;
+        }
+        Self {
+            sum_p: sum_p as f64,
+            sum_pp: sum_pp as f64,
+            n: patch.width as f64 * patch.height as f64,
+        }
+    }
+}
+
+/// Normalised correlation of `patch` at every point of the grid, sharing the
+/// stamp sums. Returns the best point and score.
+fn correlation_grid(
+    scan: &Gray,
+    patch: &Gray2,
+    stats: &StampStats,
+    points: impl IntoIterator<Item = (isize, isize)>,
+) -> Option<(f64, isize, isize)> {
+    let (pw, ph) = (patch.width, patch.height);
+    let pixels = scan.pixels();
+    let sw = scan.width() as isize;
+    let sh = scan.height() as isize;
+    let stamp = &patch.pixels;
+    let mut best: Option<(f64, isize, isize)> = None;
+    for (tx, ty) in points {
+        if tx < 0 || ty < 0 || tx + pw as isize > sw || ty + ph as isize > sh {
+            continue;
+        }
+        // u32 accumulators: max per-pixel product 65025 and n < 2^16 fit
+        // comfortably, and 32-bit lanes vectorize twice as wide as 64-bit.
+        let (mut sum_s, mut sum_ss, mut sum_ps) = (0u32, 0u32, 0u32);
+        for py in 0..ph {
+            let stamp_row = py * pw;
+            let scan_row = ((ty + py as isize) * sw) as usize + tx as usize;
+            for px in 0..pw {
+                let stamp = u32::from(stamp[stamp_row + px]);
+                let scan_value = u32::from(pixels[scan_row + px]);
+                sum_s += scan_value;
+                sum_ss += scan_value * scan_value;
+                sum_ps += stamp * scan_value;
+            }
+        }
+        let n = stats.n;
+        let (sum_s, sum_ss, sum_ps) = (f64::from(sum_s), f64::from(sum_ss), f64::from(sum_ps));
+        let cov = sum_ps - stats.sum_p * sum_s / n;
+        let var_p = stats.sum_pp - stats.sum_p * stats.sum_p / n;
+        let var_s = sum_ss - sum_s * sum_s / n;
+        let denom = (var_p * var_s).sqrt();
+        let score = if denom < 1e-6 { 0.0 } else { cov / denom };
+        if best.as_ref().map_or(true, |b| score > b.0) {
+            best = Some((score, tx, ty));
+        }
+    }
+    best
 }
 
 fn correlation(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64 {
