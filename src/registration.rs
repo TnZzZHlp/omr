@@ -185,33 +185,48 @@ fn register_by_content(page: &Page, scan: &Gray, _options: DetectOptions) -> Res
                 }
             }
         });
-    let blur: Vec<u16> = (0..h)
-        .into_par_iter()
-        .flat_map_iter(|y| {
-            let row = y * w;
-            let mut line = Vec::with_capacity(w);
+    let mut blur = vec![0u16; w * h];
+    blur.par_chunks_mut(w)
+        .enumerate()
+        .for_each(|(y, row)| {
+            let src = y * w;
             let mut acc = 0u16;
             for dx in 0..2 {
-                acc += vblur[row + dx];
+                acc += vblur[src + dx];
             }
-            for x in 0..w {
+            for (x, slot) in row.iter_mut().enumerate() {
                 let add = (x + 2).min(w - 1);
-                acc += vblur[row + add];
+                acc += vblur[src + add];
                 if x >= 3 {
-                    acc -= vblur[row + x - 3];
+                    acc -= vblur[src + x - 3];
                 }
-                line.push(acc);
+                *slot = acc;
             }
-            line
-        })
-        .collect();
-    // integral[i * (w + 1) + j] = sum of blur over rows 0..i, columns 0..j
+        });
+    // integral[i * (w + 1) + j] = sum of blur over rows 0..i, columns 0..j.
+    // Two passes: row sums in parallel (independent), then the serial column
+    // prefix over h rows — each step is one u32 add per cell over a contiguous
+    // (w+1)-stride.
     let mut integral = vec![0u32; (w + 1) * (h + 1)];
-    for y in 0..h {
-        let mut row_sum = 0u32;
-        for x in 0..w {
-            row_sum += u32::from(blur[y * w + x]);
-            integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1] + row_sum;
+    integral
+        .par_chunks_mut(w + 1)
+        .enumerate()
+        .for_each(|(y, row)| {
+            if y == 0 {
+                return;
+            }
+            let src = (y - 1) * w;
+            let mut row_sum = 0u32;
+            for (x, slot) in row[1..].iter_mut().enumerate() {
+                row_sum += u32::from(blur[src + x]);
+                *slot = row_sum;
+            }
+        });
+    for y in 1..h {
+        let stride = w + 1;
+        let (prev_row, cur_row) = integral[y * stride..].split_at_mut(stride);
+        for (dst, src) in cur_row.iter_mut().zip(&prev_row[..stride]) {
+            *dst += *src;
         }
     }
     let rect_sum = |x0: i32, y0: i32, x1: i32, y1: i32| -> u32 {
