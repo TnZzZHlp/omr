@@ -1,0 +1,44 @@
+[package]
+name = "omr"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Reader for the .mb answer-sheet template format: registration, bubble, mark and barcode recognition"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+encoding_rs = "0.8"
+quick-xml = "0.42"
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+rayon = "1"
+png = "0.18"
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+
+[[example]]
+name = "recognize"
+path = "examples/recognize.rs"
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+style = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+all = { level = "warn", priority = -1 }
+
+cargo_common_metadata = "allow"
+multiple_crate_versions = "allow"
+missing_errors_doc = "allow"
+similar_names = "allow"
+must_use_candidate = "allow"
+too_many_lines = "allow"

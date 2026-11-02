@@ -1,0 +1,138 @@
+{
+  "page": 0,
+  "template_id": "4ad58777465148a69a0e52078b00323d",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.08,
+    "scale_x": 1.002,
+    "scale_y": 0.998
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.86
+  },
+  "barcode": {
+    "text": "20240770",
+    "check_ok": true
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 1,
+      "name": "S#1",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.88
+    },
+    {
+      "question": 2,
+      "name": "S#2",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.89
+    },
+    {
+      "question": 3,
+      "name": "S#3",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.85
+    },
+    {
+      "question": 4,
+      "name": "S#4",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.85
+    },
+    {
+      "question": 5,
+      "name": "S#5",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.89
+    },
+    {
+      "question": 6,
+      "name": "S#6",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.87
+    },
+    {
+      "question": 7,
+      "name": "S#7",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.89
+    },
+    {
+      "question": 8,
+      "name": "S#8",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.93
+    },
+    {
+      "question": 9,
+      "name": "S#9",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.9
+    },
+    {
+      "question": 10,
+      "name": "S#10",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.9
+    },
+    {
+      "question": 11,
+      "name": "S#11",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.87
+    },
+    {
+      "question": 12,
+      "name": "S#12",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.9
+    },
+    {
+      "question": 13,
+      "name": "S#13",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.92
+    },
+    {
+      "question": 14,
+      "name": "S#14",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.91
+    },
+    {
+      "question": 15,
+      "name": "S#15",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.91
+    },
+    {
+      "question": 16,
+      "name": "S#16",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.9
+    }
+  ],
+  "review_count": 0,
+  "overlay": "00005e41:98fd6182ea1bb931"
+}

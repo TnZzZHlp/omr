@@ -1,0 +1,89 @@
+{
+  "page": 0,
+  "template_id": "66541297bef9433aa8dacc5974e591ea",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": 0.07,
+    "scale_x": 1.004,
+    "scale_y": 0.998
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.87
+  },
+  "barcode": {
+    "text": "20250051",
+    "check_ok": true
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 1,
+      "name": "S#1",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.9
+    },
+    {
+      "question": 2,
+      "name": "S#2",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.93
+    },
+    {
+      "question": 3,
+      "name": "S#3",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.89
+    },
+    {
+      "question": 4,
+      "name": "S#4",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.93
+    },
+    {
+      "question": 5,
+      "name": "S#5",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.9
+    },
+    {
+      "question": 6,
+      "name": "S#6",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.89
+    }
+  ],
+  "multiple": [
+    {
+      "name": "M#7",
+      "question": 7,
+      "selected": [
+        "A",
+        "D"
+      ],
+      "needs_review": false
+    },
+    {
+      "name": "M#8",
+      "question": 8,
+      "selected": [
+        "B",
+        "C",
+        "D"
+      ],
+      "needs_review": false
+    }
+  ],
+  "review_count": 0,
+  "overlay": "000073f7:9342bafc6e6c6130"
+}

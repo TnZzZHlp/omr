@@ -1,0 +1,47 @@
+{
+  "page": 0,
+  "template_id": "f5235054bf1445bfaf33d09b6e9aa676",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 1.6,
+    "rotation_deg": 0.03,
+    "scale_x": 1.0,
+    "scale_y": 1.002
+  },
+  "barcode": {
+    "text": "20240756",
+    "check_ok": true
+  },
+  "selections": [
+    {
+      "question": 1,
+      "name": "S#1",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.86
+    },
+    {
+      "question": 2,
+      "name": "S#2",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.85
+    },
+    {
+      "question": 3,
+      "name": "S#3",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.83
+    },
+    {
+      "question": 4,
+      "name": "S#4",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.85
+    }
+  ],
+  "review_count": 0,
+  "overlay": "00004a34:c2f77b3474fec67e"
+}

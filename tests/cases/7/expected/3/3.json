@@ -1,0 +1,15 @@
+{
+  "page": 2,
+  "template_id": "",
+  "registration": {
+    "mode": "failed",
+    "max_residual": -1.0,
+    "rotation_deg": 0.0,
+    "scale_x": 0.0,
+    "scale_y": 0.0
+  },
+  "selections": [],
+  "review_count": 0,
+  "registration_failed": "template error: template has no page 2",
+  "overlay": "none"
+}

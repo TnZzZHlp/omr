@@ -1,0 +1,37 @@
+{
+  "page": 2,
+  "template_id": "1c3e796c1f0a477499743374f3cc5b42",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 2.4,
+    "rotation_deg": 0.02,
+    "scale_x": 1.002,
+    "scale_y": 1.005
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "3",
+    "needs_review": false,
+    "confidence": 0.85
+  },
+  "candidate_number": {
+    "value": "1103180117",
+    "digits": [
+      "1",
+      "1",
+      "0",
+      "3",
+      "1",
+      "8",
+      "0",
+      "1",
+      "1",
+      "7"
+    ],
+    "needs_review": true
+  },
+  "absent": false,
+  "selections": [],
+  "review_count": 0,
+  "overlay": "00005952:85ef8eadcf2c0ea2"
+}

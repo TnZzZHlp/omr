@@ -1,0 +1,59 @@
+{
+  "page": 0,
+  "template_id": "ef73d2fa17414787885170e29e3d9797",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.2,
+    "rotation_deg": -0.04,
+    "scale_x": 1.001,
+    "scale_y": 1.002
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.82
+  },
+  "candidate_number": {
+    "value": "1103180117",
+    "digits": [
+      "1",
+      "1",
+      "0",
+      "3",
+      "1",
+      "8",
+      "0",
+      "1",
+      "1",
+      "7"
+    ],
+    "needs_review": true
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 4,
+      "name": "S#4",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.82
+    },
+    {
+      "question": 8,
+      "name": "S#8",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.84
+    },
+    {
+      "question": 12,
+      "name": "S#12",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.82
+    }
+  ],
+  "review_count": 0,
+  "overlay": "0000751f:45b6cc97617eecc7"
+}

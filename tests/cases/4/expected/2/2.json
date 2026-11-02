@@ -1,0 +1,14 @@
+{
+  "page": 1,
+  "template_id": "66541297bef9433aa8dacc5974e591ea",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.05,
+    "scale_x": 1.001,
+    "scale_y": 0.996
+  },
+  "selections": [],
+  "review_count": 0,
+  "overlay": "0000254a:92e802e7e12e1702"
+}
