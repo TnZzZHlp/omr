@@ -1,5 +1,11 @@
 //! Recognises every scan in a directory against one template, in parallel.
 //!
+//! Images are found recursively (`.jpg`/`.jpeg`/`.png`, hidden files and the
+//! tool's own `.annotated.png` outputs excluded) and processed on the rayon
+//! pool. Per-scan results print in path order; the exit code is 0 only when
+//! every scan was read. Failures do not stop the batch unless `--fail-fast`
+//! is given.
+//!
 //! ```text
 //! omr-batch <template.mb> <directory> [-p page] [-o out-dir] [--jobs n]
 //!     [--json] [--scale n] [--no-cells] [--no-registration] [--fail-fast]

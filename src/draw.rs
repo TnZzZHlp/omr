@@ -24,6 +24,8 @@ pub const INK: Rgb<u8> = Rgb([15, 15, 15]);
 const PAPER: Rgb<u8> = Rgb([255, 255, 255]);
 
 /// Copies a grayscale scan into an RGB image.
+/// Expands a luma raster into an RGB image with equal channels, the canvas
+/// the annotations draw on.
 pub fn to_rgb(width: usize, height: usize, pixels: &[u8]) -> RgbImage {
     let mut out = RgbImage::new(width as u32, height as u32);
     for (x, y, pixel) in out.enumerate_pixels_mut() {
@@ -59,6 +61,8 @@ pub fn line(img: &mut RgbImage, from: (f64, f64), to: (f64, f64), thickness: u32
 
 /// Draws a closed four sided outline, e.g. a template rectangle seen through a
 /// projective transform.
+/// Draws the four connecting lines of a quadrilateral (a transformed cell
+/// rectangle).
 pub fn quad(img: &mut RgbImage, corners: [(f64, f64); 4], thickness: u32, color: Rgb<u8>) {
     for i in 0..4 {
         line(img, corners[i], corners[(i + 1) % 4], thickness, color);
@@ -66,6 +70,7 @@ pub fn quad(img: &mut RgbImage, corners: [(f64, f64); 4], thickness: u32, color:
 }
 
 /// Draws a rectangle given by two opposite corners.
+/// Draws an axis-aligned rectangle outline between two corners.
 pub fn rect(img: &mut RgbImage, from: (f64, f64), to: (f64, f64), thickness: u32, color: Rgb<u8>) {
     quad(
         img,
@@ -81,6 +86,7 @@ pub fn rect(img: &mut RgbImage, from: (f64, f64), to: (f64, f64), thickness: u32
 }
 
 /// Paints a solid rectangle, clipped to the image.
+/// Fills an integer-aligned rectangle, clipped to the image.
 pub fn fill_rect(img: &mut RgbImage, x: i64, y: i64, width: u32, height: u32, color: Rgb<u8>) {
     for py in y..y + height as i64 {
         for px in x..x + width as i64 {
@@ -90,6 +96,7 @@ pub fn fill_rect(img: &mut RgbImage, x: i64, y: i64, width: u32, height: u32, co
 }
 
 /// Draws a small cross centred on a point, used for detected corners.
+/// Draws a small cross, used to mark registration points.
 pub fn cross(img: &mut RgbImage, at: (f64, f64), radius: u32, thickness: u32, color: Rgb<u8>) {
     let (x, y) = (at.0.round(), at.1.round());
     let r = f64::from(radius);
@@ -116,6 +123,7 @@ fn put(img: &mut RgbImage, x: i64, y: i64, color: Rgb<u8>) {
 }
 
 /// Width of a rendered string in pixels.
+/// Advance width of a rendered string: 6 px per glyph times the scale.
 pub fn text_width(text: &str, scale: u32) -> u32 {
     text.chars().count() as u32 * 6 * scale.max(1)
 }
@@ -126,6 +134,7 @@ pub const fn text_height(scale: u32) -> u32 {
 }
 
 /// Draws a string in the built in 5x7 font.
+/// Draws `text` with the built-in 5x7 font; unknown characters are skipped.
 pub fn text(img: &mut RgbImage, x: i64, y: i64, text: &str, scale: u32, color: Rgb<u8>) {
     let scale = scale.max(1);
     let mut cursor = x;
@@ -154,6 +163,8 @@ pub fn text(img: &mut RgbImage, x: i64, y: i64, text: &str, scale: u32, color: R
 /// Draws a label on a solid plate so it stays legible over any background.
 ///
 /// Returns the plate rectangle as `(x, y, width, height)`.
+/// Draws a filled label chip (`text` on `background`) at the given position,
+/// the reading labels in the annotation margins.
 pub fn badge(
     img: &mut RgbImage,
     x: i64,

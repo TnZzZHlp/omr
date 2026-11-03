@@ -64,8 +64,10 @@ pub struct Cell {
 /// An answer block (`<omr>`).
 #[derive(Clone, Debug)]
 pub struct Block {
-    /// Group name, for example `S#1`.
+    /// Group name, for example `S#1` (scored question 1) or `KSH` (candidate
+    /// number).
     pub name: String,
+    /// The block family, derived from `omrType` and `fillType`.
     pub kind: BlockKind,
     /// Question number from `stno` when present.
     pub question: Option<u32>,
@@ -82,12 +84,14 @@ pub struct Block {
 }
 
 impl Block {
+    /// The cell at `(row, column)`, if the block declares it.
     pub fn cell(&self, row: usize, column: usize) -> Option<&Cell> {
         self.cells
             .iter()
             .find(|c| c.row == row && c.column == column)
     }
 
+    /// Number of distinct columns, from the highest declared column index.
     pub fn columns(&self) -> usize {
         self.cells
             .iter()
@@ -96,6 +100,7 @@ impl Block {
             .map_or(0, |m| m + 1)
     }
 
+    /// Number of distinct rows, from the highest declared row index.
     pub fn rows(&self) -> usize {
         self.cells.iter().map(|c| c.row).max().map_or(0, |m| m + 1)
     }
@@ -104,6 +109,7 @@ impl Block {
 /// A registration mark (`<mli>`).
 #[derive(Clone, Debug)]
 pub struct Mark {
+    /// Ordinal among the page's marks, top-left to bottom-right.
     pub index: u32,
     pub name: String,
     /// Position of the mark on the page. Some generators write the search window
@@ -125,10 +131,14 @@ pub struct Mark {
 pub struct Gray2 {
     pub width: usize,
     pub height: usize,
+    /// Row-major luma bytes, 0 = black, 255 = paper.
     pub pixels: Vec<u8>,
 }
 
 impl Gray2 {
+    /// Stamp pixel at `(x, y)`; reads outside the raster return 255 (paper),
+    /// which lets the correlation sweep probe edge-adjacent positions without
+    /// bounds checks.
     pub fn get(&self, x: usize, y: usize) -> u8 {
         if x >= self.width || y >= self.height {
             return 255;
@@ -140,8 +150,11 @@ impl Gray2 {
 /// One template page, corresponding to one scanned side.
 #[derive(Clone, Debug)]
 pub struct Page {
+    /// Zero-based page ordinal within the template.
     pub index: usize,
+    /// Registration marks (`mli`), four per side on every template seen.
     pub marks: Vec<Mark>,
+    /// Answer blocks (`omr`), in declaration order.
     pub blocks: Vec<Block>,
     /// Row order for barcode decoding: `direct` of the barcode block.
     pub barcode_direct: u32,
@@ -158,20 +171,30 @@ impl Page {
     }
 }
 
+/// A parsed `.mb` template: the identity of the sheet and, per scanned side,
+/// the registration marks and answer blocks in page coordinates.
 #[derive(Clone, Debug)]
 pub struct Template {
+    /// `ver` attribute of the root element.
     pub version: String,
+    /// `mbid` attribute; the stable identity of this sheet layout.
     pub id: String,
+    /// `dpi` attribute as declared by the generator.
     pub dpi: f64,
+    /// One entry per scanned side, in declaration order.
     pub pages: Vec<Page>,
 }
 
 impl Template {
+    /// Reads and parses a `.mb` file from disk.
     pub fn parse_file(path: impl AsRef<Path>) -> Result<Self> {
         let bytes = std::fs::read(path)?;
         Self::parse(&bytes)
     }
 
+    /// Parses the GBK-encoded XML document. The reader tolerates the
+    /// generator's quirks: multi-line tags, very long base64 attributes and
+    /// non-standard trailing bits in the base64 payloads.
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         let text = decode_xml(bytes)?;
         let mut reader = quick_xml::Reader::from_str(&text);
@@ -240,11 +263,17 @@ impl Template {
         Ok(template)
     }
 
+    /// The page with the given zero-based index, if declared.
     pub fn page(&self, index: usize) -> Option<&Page> {
         self.pages.get(index)
     }
 }
 
+/// Builds a `Mark` from the `mli` attributes. The declared box is either a
+/// real bounding box (`x1..y2` with positive extent) or, on older files, a
+/// synthetic box of the stamp's own size centred on the recorded position.
+/// `box_declared` records which happened: only a real box means `x, y` is the
+/// mark centre rather than a search-window origin.
 fn parse_mark(attrs: &AttrMap) -> Mark {
     let patch_w = attrs.number("width").unwrap_or(0.0);
     let patch_h = attrs.number("height").unwrap_or(0.0);
@@ -324,6 +353,9 @@ fn parse_mark(attrs: &AttrMap) -> Mark {
     }
 }
 
+/// Builds a `Block` from the `omr` attributes: the declared area, the kind
+/// derived from `omrType`/`fillType`, the question metadata, and the cells
+/// laid out from the `ax`/`ay` edge lists (`onum` columns, `inum` rows).
 fn parse_block(attrs: &AttrMap) -> Result<Block> {
     let raw_type = attrs.first("omrType");
     let kind = BlockKind::from_tags(&raw_type, &attrs.first("fillType"));
@@ -379,10 +411,12 @@ fn parse_block(attrs: &AttrMap) -> Result<Block> {
     })
 }
 
+/// Strips a namespace prefix, if any.
 fn local_name(raw: &str) -> String {
     raw.rsplit(':').next().unwrap_or(raw).to_owned()
 }
 
+/// Collects the element's attributes into a lookup map, GBK-decoded.
 fn attributes(start: &quick_xml::events::BytesStart<'_>) -> Result<AttrMap> {
     // A generator lays long attributes out over several lines, so the tag content
     // is normalised to single spaces first: `quick-xml` stops at the first line
@@ -402,6 +436,7 @@ fn attributes(start: &quick_xml::events::BytesStart<'_>) -> Result<AttrMap> {
 }
 
 #[derive(Default)]
+/// Attribute lookup with the accessors the parser needs.
 struct AttrMap {
     entries: Vec<(String, String)>,
 }
@@ -414,14 +449,17 @@ impl AttrMap {
             .map(|(_, v)| v.clone())
     }
 
+    /// Raw string value, or an empty string when absent.
     fn first(&self, key: &str) -> String {
         self.opt(key).unwrap_or_default()
     }
 
+    /// Value parsed as f64, or `None` when absent or unparsable.
     fn number(&self, key: &str) -> Option<f64> {
         self.opt(key).and_then(|v| v.trim().parse().ok())
     }
 
+    /// Comma-separated f64 list (`ax`, `ay`, `omrmap` use this shape).
     fn numbers(&self, key: &str) -> Vec<f64> {
         self.opt(key)
             .map(|v| {
@@ -445,6 +483,9 @@ impl AttrMap {
 }
 
 /// Transcodes a GBK/GB2312 document to UTF-8 so the XML reader sees valid text.
+/// Decodes the document to UTF-8. The declaration says GB2312, which is a
+/// subset of GBK, so the bytes are transcoded through GBK; a UTF-8 document
+/// decodes through `from_utf8` first.
 fn decode_xml(bytes: &[u8]) -> Result<String> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) || std::str::from_utf8(bytes).is_ok() {
         return String::from_utf8(bytes.to_vec())

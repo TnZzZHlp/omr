@@ -1,5 +1,8 @@
 //! Reads a scanned answer sheet and writes an annotated copy of the scan.
 //!
+//! The output image is full-resolution and lossless (PNG); the readings are
+//! echoed to stderr, with the JSON form available on stdout for pipelines.
+//!
 //! ```text
 //! omr <template.mb> <scan.jpg> [-p page] [-o out.png] [--crop x0,y0,x1,y1]
 //!     [--scale n] [--no-cells] [--no-registration] [--json]

@@ -2,12 +2,17 @@
 //!
 //! Two strategies are needed because the template declares two shapes of block.
 //!
-//! * Multi-row blocks (questions) are compared against their own column: the
-//!   printed bracket and option letter appear in every row, a pencil mark does
-//!   not, so subtracting the column median leaves only the pencil.
-//! * Single-row blocks (page number, absence bracket) have no siblings, so the
-//!   interior of the cell is measured directly. Page-number boxes are enclosed
-//!   and an empty one keeps a bright interior, which separates cleanly.
+//! * Grouped cells (questions) are compared against a column baseline: the
+//!   printed bracket and option letter appear in every row of the column, a
+//!   pencil mark does not, so subtracting the clean-row median leaves only the
+//!   pencil. Blocks whose first-row cells sit within a few pixels of each
+//!   other form one group even when the template declares them separately;
+//!   a column whose rows are mostly marked has no clean reference and falls
+//!   back to the absolute measure.
+//! * Solo cells (page number, absence bracket, candidate digits) have no
+//!   siblings, so the interior of the cell is measured directly. Those boxes
+//!   are enclosed and an empty one keeps a bright interior, which separates
+//!   cleanly.
 
 use crate::geometry::{Homography, Point, Rect};
 use crate::gray::Gray;
@@ -61,6 +66,7 @@ pub enum ReviewReason {
     NearBlank,
 }
 
+/// The outcome of [`decide`] for one question.
 #[derive(Clone, Debug, Serialize)]
 pub struct Decision {
     /// Index into the measured cell list, `None` when the group is blank.
@@ -72,14 +78,17 @@ pub struct Decision {
     pub reason: Option<ReviewReason>,
 }
 
+/// Decision thresholds. The defaults are calibrated on the test corpus: real
+/// marks measure 0.4-0.8 after baseline subtraction or 0.15-0.7 solo, printed
+/// letters 0.2 or less, baseline speckle under 0.1.
 #[derive(Clone, Copy, Debug)]
 pub struct DecideOptions {
-    /// Score above which a cell counts as marked.
+    /// Score above which a cell counts as marked at all.
     pub min_score: f64,
     /// A rival counts only when it reaches this fraction of the best score, so
     /// that the light halo around a pencil mark is not reported as a second one.
     pub rival_ratio: f64,
-    /// Score expected from a normal mark.
+    /// Score expected from a normal mark; winners below it stay unconfirmed.
     pub confident_score: f64,
     /// Relative separation `(best - second) / best` for a clean single mark.
     pub min_separation: f64,
@@ -97,14 +106,20 @@ impl Default for DecideOptions {
 }
 
 /// Resampled cell image; cells are only comparable on a common grid.
+/// A cell resampled on a fixed lattice, in 0..255 ink levels.
+///
+/// Cells are only comparable on a common grid: template heights differ by a
+/// pixel between rows, and the baseline machinery needs matching positions.
 #[derive(Clone, Debug)]
 pub struct Patch {
+    /// Resampled gray levels, row-major, 0 = black.
     values: Vec<f64>,
-    width: usize,
-    height: usize,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Patch {
+    /// Mean gray level; 255 for an empty patch.
     pub fn mean(&self) -> f64 {
         if self.values.is_empty() {
             255.0
@@ -114,7 +129,8 @@ impl Patch {
     }
 }
 
-/// Samples `rect` on a fixed `PATCH_W` x `PATCH_H` lattice in template space.
+/// Samples `rect` on the standard `PATCH_W` x `PATCH_H` lattice in template
+/// space.
 pub fn sample_patch(scan: &Gray, transform: &Homography, rect: Rect) -> Patch {
     sample_patch_sized(scan, transform, rect, PATCH_W, PATCH_H)
 }
@@ -123,6 +139,7 @@ pub fn sample_patch(scan: &Gray, transform: &Homography, rect: Rect) -> Patch {
 ///
 /// Cells of one column differ by a pixel in height in the template, so they are
 /// resampled on a shared lattice and compared at matching positions.
+/// Samples a rectangle on an explicit lattice in template space.
 pub fn sample_patch_sized(
     scan: &Gray,
     transform: &Homography,
@@ -183,7 +200,8 @@ fn average_around(scan: &Gray, p: Point, radius: f64) -> f64 {
     }
 }
 
-/// Per-pixel median of several patches, i.e. the printed appearance.
+/// Per-pixel median of several patches, i.e. the printed appearance with
+/// marks and noise voted away. Requires at least two patches of equal size.
 pub fn median_patch(patches: &[Patch]) -> Patch {
     let size = patches
         .first()
@@ -240,6 +258,9 @@ pub fn column_baseline(patches: &[&Patch]) -> Option<Patch> {
     Some(median_patch(&owned))
 }
 
+/// Measures one cell against its column baseline: a pixel counts as ink when
+/// it is darker than the baseline by the ink margin. The eroded fraction is
+/// the score that decides the reading.
 fn measure_against(patch: &Patch, baseline: &Patch, options: MeasureOptions) -> CellMeasure {
     let total = patch.values.len().max(1) as f64;
     let mask: Vec<bool> = patch
@@ -286,6 +307,12 @@ fn measure_solo(patch: &Patch, options: MeasureOptions) -> CellMeasure {
 ///
 /// Cells of one column differ in height by a pixel in the template, so they are
 /// resampled on a shared lattice and compared at matching positions.
+/// Measures a group of sibling blocks against per-column baselines.
+///
+/// Every block is resampled on the shared lattice, each column of cells gets
+/// a baseline from the clean (unmarked) rows, and each cell is measured as
+/// "how much darker than the baseline" — which removes the printed letter and
+/// bracket exactly. Rows are returned in the order of `siblings`.
 pub fn measure_group(
     scan: &Gray,
     transform: &Homography,
@@ -378,6 +405,10 @@ fn column_clean_count(patches: &[&Patch]) -> usize {
 /// A single cell is small, so resampling it onto a fixed lattice loses a whole
 /// row or column of pixels and can shift the printed bracket across the cell
 /// boundary. Sampling one point per template unit keeps the box aligned.
+/// Samples a rectangle at its native template resolution, one sample per
+/// pixel of the cell. A filled box has crisp edges, and bilinear blending
+/// would soften exactly the boundary that separates a marked cell from its
+/// printed bracket, so no resampling happens here.
 pub fn sample_native(scan: &Gray, transform: &Homography, rect: Rect) -> Patch {
     let width = rect.width().round().max(2.0) as usize;
     let height = rect.height().round().max(2.0) as usize;
@@ -403,6 +434,7 @@ pub fn sample_native(scan: &Gray, transform: &Homography, rect: Rect) -> Patch {
 }
 
 /// Measures a block that has no siblings to compare against.
+/// Measures every cell of a block on its own, in parallel.
 pub fn measure_solo_block(
     scan: &Gray,
     transform: &Homography,
@@ -427,6 +459,13 @@ fn score(cell: &CellMeasure) -> f64 {
 }
 
 /// Chooses the strongest cell and reports how clear that choice is.
+/// Chooses the strongest cell and reports how clear the choice is.
+///
+/// The thresholds interlock: `min_score` is the absolute floor for any mark,
+/// `confident_score` the level above which a read is trusted (baseline
+/// subtraction leaves a few percent of speckle, real marks measure ten times
+/// that), `rival_ratio` decides which runners-up count as also-marked, and
+/// `min_separation` guards against near-ties that cannot be ranked.
 pub fn decide(cells: &[CellMeasure], options: DecideOptions) -> Decision {
     if cells.is_empty() {
         return Decision {
@@ -543,6 +582,9 @@ pub fn decide(cells: &[CellMeasure], options: DecideOptions) -> Decision {
 }
 
 /// Binary erosion with a square structuring element.
+/// Binary erosion with a square structuring element of `size` px applied
+/// from every side. Thin printed strokes do not survive it; a pencil mark
+/// does. Erosion runs on the eroded map only (no iterative passes).
 pub fn erode(mask: &[bool], width: usize, height: usize, size: usize) -> Vec<bool> {
     if size <= 1 {
         return mask.to_vec();

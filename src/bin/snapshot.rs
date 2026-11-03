@@ -4,10 +4,14 @@
 //! file `tests/01/data/2/1.jpg` is page 1 of the second sheet. Each scan gets a
 //! `json` reading and a `png` rendering of the same reading, both placed under
 //! `expected/` with the layout of the scan, so a regression shows up as a diff of
-//! either file.
+//! either file. A scan whose registration fails is recorded as a
+//! `registration_failed` snapshot: the refusal is pinned behaviour, not an
+//! error.
 //!
 //! ```text
-//! cargo run --release --bin snapshot -- tests
+//! cargo run --release --bin snapshot              # tests/cases
+//! cargo run --release --bin snapshot -- tests     # another corpus root
+//! cargo run --release --bin snapshot -- --no-draw # JSON only, keep PNGs
 //! ```
 
 use omr::{Gray, Options, Recognition, Template};

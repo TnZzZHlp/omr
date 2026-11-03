@@ -1,11 +1,27 @@
 //! Registration of a scan against the template coordinate space.
 //!
-//! Each template page declares four corner marks. The template was generated from
-//! a scan of the same sheet, so a corner mark always sits at approximately the
-//! position the template records; registration therefore searches for the darkest
-//! solid mark near each expected position instead of grouping every dark blob on
-//! the page. That keeps working when a mark touches handwriting or a printed
-//! rule, which merge it into a larger component.
+//! Each template page declares four corner marks. The template was generated
+//! from a scan of the same sheet, so a corner mark always sits at approximately
+//! the position the template records; registration therefore searches for the
+//! darkest solid mark near each expected position instead of grouping every
+//! dark blob on the page. That keeps working when a mark touches handwriting
+//! or a printed rule, which merge it into a larger component.
+//!
+//! Two paths exist, tried in order by [`register`]:
+//!
+//! * **Corner marks** (`register_by_marks`). Pass 1 locates each mark with
+//!   escalating darkness sweeps, falling back to stamp correlation for shapes
+//!   darkness cannot rank (triangles, rings) and to a second first-guess
+//!   (template spread over the whole scan) when the identity guess fails.
+//!   Pass 2 fits a homography, re-locates from the predicted positions and
+//!   fits again. The fit reports its residuals, so an implausible layout
+//!   (wrong sheet side, wrong scale) can be rejected outright.
+//! * **Content alignment** (`register_by_content`). When the marks are
+//!   missing or cropped off, the printed brackets and letters of the answer
+//!   blocks align the scan by translation: a scored comparison of "ink inside
+//!   the declared cells vs ink between them" over all blocks, searched by
+//!   coarse-to-fine grid. Confidence on such a page is scaled by 0.7 by the
+//!   recognizer because rotation and scale are uncompensated.
 
 use crate::error::{Error, Result};
 use crate::geometry::{Homography, Point, Rect};
@@ -104,12 +120,18 @@ impl Default for DetectOptions {
     }
 }
 
-/// Aligns the scan on the printed content of the answer blocks.
+/// Aligns the scan on the printed content of the answer blocks (the fallback
+/// when the corner marks cannot be found).
 ///
-/// With no corner marks there is nothing to fit a transform to, but the blocks
-/// themselves are printed in the same place on every sheet: the brackets and the
-/// option letters are part of the template. One block is enough to find the
-/// offset; the rest confirm it.
+/// Every block with cells (question rows, page numbers) contributes a score:
+/// mean ink inside the declared cells minus mean ink in the gaps between them,
+/// on a binarized, box-blurred copy of the scan addressed through an integral
+/// image. The true offset lines cells up with ink and gaps with paper, so it
+/// is the maximum of the score over the translation. Scoring all blocks
+/// together breaks the row-pitch alias of single question rows; a rightward
+/// extension of each block area penalizes one-cell x aliases; blocks are
+/// skipped near the page edge only while most of the layout stays visible; and
+/// a final score threshold rejects a scan of a different template outright.
 fn register_by_content(page: &Page, scan: &Gray, _options: DetectOptions) -> Result<Registration> {
     let blocks: Vec<&Block> = page
         .blocks
@@ -420,7 +442,9 @@ fn register_by_content(page: &Page, scan: &Gray, _options: DetectOptions) -> Res
     })
 }
 
-/// Fits the scan to the template page.
+/// Fits the scan to the template page: corner marks first, printed content as
+/// the fallback. The error of whichever path was tried first is reported when
+/// both refuse, so a wrong-page scan still says "no corner mark near …".
 pub fn register(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Registration> {
     match register_by_marks(page, scan, options) {
         Ok(registration) => Ok(registration),
@@ -429,6 +453,13 @@ pub fn register(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Regi
 }
 
 /// Registers using the four corner marks.
+///
+/// Pass 1 locates each mark independently: darkness sweeps with an escalating
+/// radius, a stamp correlation for marks the darkness window cannot rank, and
+/// a second first-guess (template spread over the whole scan) when the
+/// identity guess fails. Pass 2 fits a homography from pass 1, re-locates the
+/// marks from the predicted positions, and fits again; the transform between
+/// the recorded and fitted positions is what the caller applies.
 fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Registration> {
     let corners: Vec<(Point, f64, Option<&Gray2>)> = page
         .marks
@@ -568,6 +599,9 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
 ///
 /// Only a stated bounding box proves that: without one, the recorded position is
 /// where the generator searched for the mark, which sits up and to the left of it.
+/// True when every mark of the page declares a bounding box, which is how the
+/// generator says "x, y is the mark centre" rather than "x, y is where to
+/// look".
 fn recorded_position_is_mark_centre(page: &Page) -> bool {
     !page.marks.is_empty() && page.marks.iter().all(|mark| mark.box_declared)
 }
@@ -578,6 +612,9 @@ fn recorded_position_is_mark_centre(page: &Page) -> bool {
 /// scan, so only the linear part of the fit may be applied to them; keeping the
 /// fitted translation would shift every block by the distance between a corner
 /// mark's stamped centre and the origin recorded for it.
+/// Removes the translation a search-window origin would inject into the fit.
+/// Only needed when the template's `x, y` is a search origin rather than the
+/// mark centre (see [`recorded_position_is_mark_centre`]).
 fn anchor_origin(fitted: &Homography, _image_points: &[Point]) -> Homography {
     let a = fitted.apply(Point::new(0.0, 0.0));
     let bx = fitted.apply(Point::new(1.0, 0.0));
@@ -588,6 +625,8 @@ fn anchor_origin(fitted: &Homography, _image_points: &[Point]) -> Homography {
     Homography::from_coefficients([dx.x, dy.x, 0.0, dx.y, dy.y, 0.0, c[6], c[7], 1.0])
 }
 
+/// Assembles the final `Registration`, reporting the rotation, scales and
+/// per-corner residuals of the fitted transform.
 fn finish(
     transform: Homography,
     template_points: Vec<Point>,
@@ -622,6 +661,8 @@ fn finish(
 }
 
 /// Mean scale of a fitted transform, used to size the next search window.
+/// Geometric mean of the transform's axis scales, which the mark searches use
+/// to size their windows in scan pixels.
 fn coarse_scale(transform: &Homography) -> f64 {
     let origin = transform.apply(Point::new(0.0, 0.0));
     let unit_x = transform.apply(Point::new(1.0, 0.0));
@@ -637,6 +678,9 @@ fn coarse_scale(transform: &Homography) -> f64 {
 /// states a stamp, `x, y` is the stamp's top-left corner and the mark is the
 /// stamp's ink centroid relative to that corner; the same offset is then applied
 /// to the scan, which keeps the two coordinate systems consistent.
+/// The template-space point a mark's detection must be compared against:
+/// the box centre when the file states a box, otherwise the recorded origin
+/// shifted by the stamp's ink centroid.
 fn mark_point(mark: &crate::template::Mark, found: Rect) -> Point {
     if mark.box_declared {
         // A stated box is the mark itself; its centre is the point to register.
@@ -667,12 +711,13 @@ fn mark_point(mark: &crate::template::Mark, found: Rect) -> Point {
     }
 }
 
-/// Size of a corner mark in template units, preferring the recorded box and
-/// falling back to the stamp raster.
+/// Test hook around the private `mark_size`.
 pub fn mark_size_of(mark: &crate::template::Mark) -> f64 {
     mark_size(mark)
 }
 
+/// The size of a corner mark in template units, preferring the recorded box
+/// and falling back to the stamp raster.
 fn mark_size(mark: &crate::template::Mark) -> f64 {
     if let Some(found) = mark.found {
         let size = found.width().min(found.height());
@@ -695,6 +740,10 @@ fn mark_size(mark: &crate::template::Mark) -> f64 {
 ///
 /// The stamp is compared at a few integer scales, because the scan may not be at
 /// the scale the template was cut at; the best matching offset wins.
+/// Correlates the stamp over a window around the expected position, coarse
+/// grid first (quarter steps, parallel over rows) and a fine pass around the
+/// winner. The stamp's ink centroid converts the best top-left corner into
+/// the mark point.
 fn locate_by_patch(
     scan: &Gray,
     expected: Point,
@@ -778,6 +827,7 @@ fn locate_by_patch(
 ///
 /// The score is 1.0 for a perfect match and can go negative; it is invariant to
 /// the overall brightness of the scan, which varies between scanners.
+/// Test hook around the private `correlation`.
 pub fn correlation_at_pub(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64 {
     correlation(scan, x, y, patch)
 }
@@ -785,6 +835,8 @@ pub fn correlation_at_pub(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64
 /// The stamp's own sums: `sum_p`, `sum_pp` and the per-row pixel pointer
 /// arithmetic never change across a correlation sweep, so they are computed
 /// once instead of once per grid point.
+/// The stamp's own sums (`sum_p`, `sum_pp`): fixed for a given stamp, so they
+/// are computed once for a whole correlation sweep instead of once per point.
 struct StampStats {
     sum_p: f64,
     sum_pp: f64,
@@ -792,6 +844,7 @@ struct StampStats {
 }
 
 impl StampStats {
+    /// Sums the stamp once; called at the start of a sweep.
     fn build(patch: &Gray2) -> Self {
         let (mut sum_p, mut sum_pp) = (0u64, 0u64);
         for &value in &patch.pixels {
@@ -809,6 +862,9 @@ impl StampStats {
 
 /// Normalised correlation of `patch` at every point of the grid, sharing the
 /// stamp sums. Returns the best point and score.
+/// Normalised correlation of `patch` at every point of the grid, sharing the
+/// stamp sums and scanning rows in order (vectorisable, no clamping). Returns
+/// the best point and score.
 fn correlation_grid(
     scan: &Gray,
     patch: &Gray2,
@@ -853,6 +909,10 @@ fn correlation_grid(
     best
 }
 
+/// Normalised correlation of the stamp against the scan at one offset.
+///
+/// The score is 1.0 for a perfect match and can go negative; it is invariant
+/// to the overall brightness of the scan, which varies between scanners.
 fn correlation(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64 {
     let n = patch.width as u64 * patch.height as u64;
     if n < 4 {
@@ -911,11 +971,17 @@ fn correlation(scan: &Gray, x: isize, y: isize, patch: &Gray2) -> f64 {
 
 /// Width of the square window the stamp search sweeps around the expected
 /// position; must match `locate_by_patch` exactly.
+/// Width of the square window the stamp search sweeps around the expected
+/// position; must match `locate_by_patch` exactly, which is what lets the
+/// escalation loop skip the correlation once the span stops growing.
 fn stamp_span(size: f64, options: &DetectOptions) -> isize {
     let radius = (size * options.search_radius.max(1.0)).ceil() as isize;
     (radius / 2).clamp(12, 40)
 }
 
+/// Locates one mark: darkness sweep first (an order of magnitude cheaper),
+/// stamp correlation only when the darkest window is not the mark, both
+/// bounded by the plausibility tolerance.
 fn locate_mark(
     scan: &Gray,
     expected: Point,
@@ -953,6 +1019,10 @@ fn locate_mark(
 }
 
 /// The darkest square window near `expected`, without any shape knowledge.
+/// The darkest square window near `expected`, without any shape knowledge.
+/// Sweeps a grid at `size/3` steps over the search radius; beyond about one
+/// scan worth of cumulative windows an integral image turns each window into
+/// four lookups (built once and shared by the sweeps of all corners).
 fn darkness_mark(
     scan: &Gray,
     expected: Point,
@@ -1010,6 +1080,8 @@ fn darkness_mark(
 
 /// Centroid of the ink inside the winning window, which lands on the middle of
 /// the mark rather than on the grid point.
+/// Centroid of the ink inside the winning window, which lands on the middle
+/// of the mark rather than on the grid point.
 fn refine_center(
     scan: &Gray,
     cx: isize,

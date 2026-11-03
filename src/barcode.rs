@@ -240,6 +240,9 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
 /// The profile of a barcode is close to two-valued, so the level that best
 /// separates ink from paper is a stable place to cut; a fraction of the peak
 /// would instead follow the noise of a single bright column.
+/// Measures the alternating bar and space widths of `profile` at the given
+/// fraction of its peak, returning one candidate chunk per contiguous run.
+/// Widths are in profile columns, normalised later against the module count.
 fn run_lengths(profile: &[f64], level: f64) -> Vec<Vec<f64>> {
     let peak = profile.iter().copied().fold(0.0, f64::max);
     let floor = profile.iter().copied().fold(f64::MAX, f64::min);
@@ -333,6 +336,8 @@ fn run_lengths(profile: &[f64], level: f64) -> Vec<Vec<f64>> {
 /// spanning `11n + 13` modules. Scan noise blurs the outer edges of the band, so
 /// a few leading and trailing elements are dropped until the count matches, and
 /// the best fit wins.
+/// Decodes Code 128 element widths into values, trying the edge trims until
+/// the element count matches a legal symbol layout.
 fn decode_elements(chunks: &[Vec<f64>]) -> BarcodeResult {
     let mut best: Option<(f64, Vec<i32>)> = None;
     for chunk in chunks {
@@ -422,6 +427,10 @@ fn decode_elements(chunks: &[Vec<f64>]) -> BarcodeResult {
     decode_values(values, width_error)
 }
 
+/// Validates a decoded value sequence: start symbol, check digit (modulo 103
+/// over the data values), and stop pattern. `width_error` is the residual of
+/// the width fit, kept so the caller can prefer the tightest of several
+/// hypotheses.
 fn decode_values(values: Vec<i32>, width_error: f64) -> BarcodeResult {
     let Some(&first) = values.first() else {
         return BarcodeResult::failed("barcode has no start symbol");

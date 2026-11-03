@@ -2,6 +2,7 @@
 
 use crate::error::{Error, Result};
 
+/// A point in template or scan coordinates.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point {
     pub x: f64,
@@ -13,11 +14,15 @@ impl Point {
         Self { x, y }
     }
 
+    /// Euclidean distance to `other`.
     pub fn distance(self, other: Point) -> f64 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
     }
 }
 
+/// An axis-aligned rectangle in half-open template coordinates:
+/// `x0 <= x < x1`, `y0 <= y < y1`. Cell rects, block areas and mark boxes all
+/// use this form.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     pub x0: f64,
@@ -31,22 +36,27 @@ impl Rect {
         Self { x0, y0, x1, y1 }
     }
 
+    /// The smallest rectangle covering both points.
     pub fn from_corners(a: Point, b: Point) -> Self {
         Self::new(a.x.min(b.x), a.y.min(b.y), a.x.max(b.x), a.y.max(b.y))
     }
 
+    /// Extent along x: `x1 - x0`.
     pub fn width(self) -> f64 {
         self.x1 - self.x0
     }
 
+    /// Extent along y: `y1 - y0`.
     pub fn height(self) -> f64 {
         self.y1 - self.y0
     }
 
+    /// The midpoint of the two corners.
     pub fn center(self) -> Point {
         Point::new((self.x0 + self.x1) / 2.0, (self.y0 + self.y1) / 2.0)
     }
 
+    /// The smallest rectangle covering both.
     pub fn union(self, other: Rect) -> Rect {
         Rect::new(
             self.x0.min(other.x0),
@@ -56,6 +66,7 @@ impl Rect {
         )
     }
 
+    /// Moves the rectangle by `by`.
     pub fn translate(self, by: Point) -> Rect {
         Rect::new(
             self.x0 + by.x,
@@ -65,10 +76,14 @@ impl Rect {
         )
     }
 
+    /// Grows the rectangle by `by` on every side.
     pub fn expand(self, by: f64) -> Rect {
         Rect::new(self.x0 - by, self.y0 - by, self.x1 + by, self.y1 + by)
     }
 
+    /// Shrinks the rectangle by fractions of its width (`fx`) and height
+    /// (`fy`) on every side; 0.3 insets 30% from the left and right. Used to
+    /// ignore the printed bracket border when judging a cell interior.
     pub fn inset(self, fx: f64, fy: f64) -> Rect {
         Rect::new(
             self.x0 + self.width() * fx,
@@ -78,10 +93,13 @@ impl Rect {
         )
     }
 
+    /// True when `p` lies inside the rectangle, edges included.
     pub fn contains(self, p: Point) -> bool {
         p.x >= self.x0 && p.x <= self.x1 && p.y >= self.y0 && p.y <= self.y1
     }
 
+    /// The four corners, clockwise from the top-left. The annotation draws
+    /// the quads through them.
     pub fn as_points(self) -> [Point; 4] {
         [
             Point::new(self.x0, self.y0),
@@ -92,6 +110,8 @@ impl Rect {
     }
 
     /// Every pixel whose centre lies inside the rectangle.
+    /// The corners as inclusive integer pixel indices, negative values
+    /// clamped to zero. The rasterizers use these to stay on the grid.
     pub fn pixel_bounds(self) -> (usize, usize, usize, usize) {
         let x0 = (self.x0 - 0.5).ceil().max(0.0) as usize;
         let y0 = (self.y0 - 0.5).ceil().max(0.0) as usize;
@@ -137,6 +157,9 @@ impl Homography {
         self.m[6].abs() < 1e-12 && self.m[7].abs() < 1e-12
     }
 
+    /// Maps a template point into the scan. The projective denominator is
+    /// clamped away from zero; for the affine transforms the registration
+    /// produces it is always 1.
     pub fn apply(&self, p: Point) -> Point {
         let m = &self.m;
         let w = m[6] * p.x + m[7] * p.y + m[8];
@@ -148,6 +171,10 @@ impl Homography {
     }
 
     /// Least squares fit of `src -> dst`; four or more correspondences required.
+    /// Least-squares projective fit of `src -> dst` via the normal equations;
+    /// four or more correspondences required. Degenerate configurations (all
+    /// points collinear, duplicate points) return an error. Used to fit the
+    /// four corner marks and to refine the fit on the second pass.
     pub fn fit(src: &[Point], dst: &[Point]) -> Result<Self> {
         if src.len() != dst.len() || src.len() < 4 {
             return Err(Error::Registration(

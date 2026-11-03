@@ -9,6 +9,9 @@ use crate::registration::{self, AlignmentMode, DetectOptions, Registration};
 use crate::template::{Block, BlockKind, Page, Template};
 use serde::Serialize;
 
+/// Tuning knobs for a reading. The defaults work for every template in the
+/// test corpus; the sub-structs expose the registration, measurement and
+/// decision thresholds separately.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Options {
     pub registration: DetectOptions,
@@ -17,6 +20,10 @@ pub struct Options {
 }
 
 /// One answered or blank question.
+///
+/// `selected` is `None` for a blank row or an unconvincing read; both cases
+/// carry `needs_review`/`reason` so a human can look. `scores` holds the raw
+/// per-label coverage for diagnostics and for the annotated output.
 #[derive(Clone, Debug, Serialize)]
 pub struct Selection {
     pub question: Option<u32>,
@@ -34,6 +41,7 @@ pub struct Selection {
     pub reason: Option<ReviewReason>,
 }
 
+/// Reading of the page-number column (`PNO`), one box per candidate page.
 #[derive(Clone, Debug, Serialize)]
 pub struct PageNumber {
     pub selected: Option<String>,
@@ -58,6 +66,7 @@ pub struct MultipleSelection {
 }
 
 /// Reading of the candidate number grid, one digit per column.
+/// Reading of the candidate number grid, one digit per column.
 #[derive(Clone, Debug, Serialize)]
 pub struct CandidateNumber {
     /// Digits read from the columns, in template order.
@@ -68,6 +77,7 @@ pub struct CandidateNumber {
     pub columns: Vec<Selection>,
 }
 
+/// Reading of the absence bracket (`QK`): set when filled in.
 #[derive(Clone, Debug, Serialize)]
 pub struct AbsentMark {
     pub marked: bool,
@@ -77,6 +87,7 @@ pub struct AbsentMark {
     pub reason: Option<ReviewReason>,
 }
 
+/// How well the scan aligned to the template, reported with every reading.
 #[derive(Clone, Debug, Serialize)]
 pub struct RegistrationInfo {
     /// How the scan was aligned to the template.
@@ -105,6 +116,7 @@ impl From<&Registration> for RegistrationInfo {
     }
 }
 
+/// The complete reading of one scanned page.
 #[derive(Clone, Debug, Serialize)]
 pub struct Recognition {
     /// Template page index, zero based.
@@ -158,6 +170,12 @@ pub fn register_scan(
 }
 
 /// Reads the page using an already fitted transform, skipping detection.
+/// Reads the page using an already fitted transform, skipping detection.
+///
+/// The companion of [`register_scan`]: the annotation pipeline and the
+/// tests use it to re-measure with a known-good transform, and callers that
+/// align sheets themselves (e.g. an external printer pipeline) can inject
+/// their own transform.
 pub fn read_with_transform(
     template: &Template,
     page_index: usize,
@@ -173,6 +191,7 @@ pub fn read_with_transform(
     Ok(recognition)
 }
 
+/// Reads with corner-mark evidence assumed.
 fn read_page(page: &Page, scan: &Gray, transform: &Homography, options: Options) -> Recognition {
     read_page_with_mode(
         page,
@@ -183,6 +202,9 @@ fn read_page(page: &Page, scan: &Gray, transform: &Homography, options: Options)
     )
 }
 
+/// Reads the page, scaling confidences by the alignment mode: content
+/// alignment is weaker evidence than four corner marks (a slight rotation or
+/// scale is uncompensated), so every confidence carries a 0.7 factor.
 fn read_page_with_mode(
     page: &Page,
     scan: &Gray,
@@ -283,6 +305,10 @@ fn read_page_with_mode(
 ///
 /// The number is printed as one column of ten digit cells per digit, so each
 /// column is decided on its own and the digits are joined in template order.
+/// Reads the candidate number columns left to right; a column contributes a
+/// digit when exactly one cell is marked, otherwise a `?` placeholder keeps
+/// the column count stable. The value is only reported when every column
+/// resolves.
 fn read_candidate_number(
     page: &Page,
     scan: &Gray,
@@ -333,6 +359,8 @@ fn read_candidate_number(
 /// Every option is an independent yes/no decision, so each cell is compared with
 /// the others in the same row to find what stands out, and all options above the
 /// threshold are reported rather than the single strongest one.
+/// Reads a multiple-select block: every cell above the marked floor counts,
+/// in declaration order.
 fn read_multiple(
     scan: &Gray,
     transform: &Homography,
@@ -372,6 +400,8 @@ fn read_multiple(
 /// The bracket is printed on every sheet, so its ink is always present; only a
 /// filled bracket darkens the whole cell. The test is therefore on the level of
 /// the cell as a whole, not on the presence of any ink.
+/// Reads the absence bracket: a printed shape with no siblings, so the cell
+/// is judged by how dark its interior is.
 fn read_absent(scan: &Gray, transform: &Homography, block: &Block, options: Options) -> AbsentMark {
     let cells = fill::measure_solo_block(scan, transform, block, options.measure);
     let level = cells.iter().map(|c| c.mean_level).fold(255.0f64, f64::min);
@@ -397,6 +427,9 @@ fn read_absent(scan: &Gray, transform: &Homography, block: &Block, options: Opti
 /// on a blank sheet without this subtraction, which makes an empty cell beat
 /// `min_score` and reads letters instead of marks. Groups smaller than three
 /// siblings cannot build a baseline and fall back to the absolute measure.
+/// Measures question blocks: blocks sharing a template column are measured
+/// against that column's baseline (the printed letter and bracket are
+/// subtracted), the rest are measured absolutely.
 fn measure_questions(
     scan: &Gray,
     transform: &Homography,
@@ -455,6 +488,7 @@ fn measure_questions(
     measured.into_iter().map(|cells| cells.unwrap_or_default()).collect()
 }
 
+/// Turns measured cells into a `Selection` for one question block.
 fn selection(block: &Block, cells: &[CellMeasure], options: DecideOptions) -> Selection {
     let decision = fill::decide(cells, options);
     Selection {

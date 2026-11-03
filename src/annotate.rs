@@ -16,6 +16,7 @@ use image::RgbImage;
 /// How the annotation should look.
 #[derive(Clone, Copy, Debug)]
 pub struct Style {
+
     /// Scale of the labels and the thickness of the outlines.
     pub scale: u32,
     /// Draw a light outline around every measured cell.
@@ -207,6 +208,8 @@ pub fn annotate(
     image
 }
 
+/// Draws the fitted page corners and the quadrilateral joining them, so a
+/// misregistration is visible at a glance.
 fn draw_registration(
     image: &mut RgbImage,
     recognition: &Recognition,
@@ -262,6 +265,9 @@ fn draw_registration(
     );
 }
 
+/// Draws one question block: cell outlines, the selected-cell quad, rival
+/// marks in the conflict colour, and the reading label in the gap beside the
+/// block.
 fn draw_question(
     image: &mut RgbImage,
     transform: &Homography,
@@ -303,6 +309,7 @@ fn draw_question(
 }
 
 /// Places a label above a block, centred on it.
+/// Places a label directly above a block area.
 fn place_above(
     image: &mut RgbImage,
     transform: &Homography,
@@ -323,6 +330,8 @@ fn place_above(
 
 /// Places a label in the free space to the right of a block, or above it when
 /// the next column leaves no room.
+/// Places a label in the free space to the right of a block, or above it when
+/// the block sits at the page edge.
 fn place_in_gap(
     image: &mut RgbImage,
     transform: &Homography,
@@ -359,6 +368,7 @@ fn place_in_gap(
 
 /// Free template width between a block and the next block to its right that
 /// overlaps it vertically.
+/// Horizontal space between the block's right edge and the page margin.
 fn right_gap(page: &Page, block: &crate::template::Block) -> f64 {
     let mut gap = f64::MAX;
     for other in &page.blocks {
@@ -377,6 +387,7 @@ fn right_gap(page: &Page, block: &crate::template::Block) -> f64 {
     }
 }
 
+/// Maps a template rectangle through the transform to scan-space corners.
 fn quad_of(transform: &Homography, rect: Rect) -> [(f64, f64); 4] {
     let corners = [
         Point::new(rect.x0, rect.y0),
@@ -400,6 +411,8 @@ fn quad_of(transform: &Homography, rect: Rect) -> [(f64, f64); 4] {
 /// scaling, no lossy codec, no palette reduction. The marker colours are flat and
 /// survive any compression, and the scan itself is already compressed as JPEG in
 /// the input, so the file stays reasonably small.
+/// Writes the annotated image as lossless PNG at the scan's own resolution.
+/// Compression level only changes size and encode time, never pixels.
 pub fn save_annotated(image: &RgbImage, path: &std::path::Path) -> std::io::Result<()> {
     let file = std::fs::File::create(path)?;
     let writer = std::io::BufWriter::new(file);
@@ -423,6 +436,10 @@ pub fn save_annotated(image: &RgbImage, path: &std::path::Path) -> std::io::Resu
 /// geometry or the labels fails a test without the test having to store a
 /// megabyte image. It is exact: the palette colours are never equal to a
 /// grayscale source pixel, and nothing is antialiased, so no threshold is needed.
+/// FNV-1a fingerprint over the pixels the annotation changed (any pixel whose
+/// colour differs from the source gray). Two readings of the same scan produce
+/// equal digests unless the annotation moved, which is what the snapshot tests
+/// pin. The prefix counts the changed pixels.
 pub fn overlay_digest(annotated: &RgbImage, scan: &Gray) -> String {
     const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const PRIME: u64 = 0x0000_0100_0000_01b3;
