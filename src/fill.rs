@@ -105,11 +105,12 @@ impl Default for DecideOptions {
     }
 }
 
-/// Resampled cell image; cells are only comparable on a common grid.
 /// A cell resampled on a fixed lattice, in 0..255 ink levels.
 ///
 /// Cells are only comparable on a common grid: template heights differ by a
 /// pixel between rows, and the baseline machinery needs matching positions.
+/// The lattice is `PATCH_W` x `PATCH_H` for multi-row groups; solo cells keep
+/// their native size.
 #[derive(Clone, Debug)]
 pub struct Patch {
     /// Resampled gray levels, row-major, 0 = black.
@@ -225,7 +226,8 @@ pub fn median_patch(patches: &[Patch]) -> Patch {
     }
 }
 
-/// Baseline for one column of a multi-row block, taken from `column` patches.
+/// Baseline for one column of a multi-row block: the median of the clean
+/// rows, which is the printed appearance of that column.
 ///
 /// A filled cell is much darker than the printed bracket, so cells that are
 /// already clearly inked are left out before taking the median; otherwise a
@@ -433,7 +435,6 @@ pub fn sample_native(scan: &Gray, transform: &Homography, rect: Rect) -> Patch {
     }
 }
 
-/// Measures a block that has no siblings to compare against.
 /// Measures every cell of a block on its own, in parallel.
 pub fn measure_solo_block(
     scan: &Gray,
@@ -459,7 +460,6 @@ fn score(cell: &CellMeasure) -> f64 {
 }
 
 /// Chooses the strongest cell and reports how clear that choice is.
-/// Chooses the strongest cell and reports how clear the choice is.
 ///
 /// The thresholds interlock: `min_score` is the absolute floor for any mark,
 /// `confident_score` the level above which a read is trusted (baseline
@@ -581,7 +581,6 @@ pub fn decide(cells: &[CellMeasure], options: DecideOptions) -> Decision {
     }
 }
 
-/// Binary erosion with a square structuring element.
 /// Binary erosion with a square structuring element of `size` px applied
 /// from every side. Thin printed strokes do not survive it; a pencil mark
 /// does. Erosion runs on the eroded map only (no iterative passes).

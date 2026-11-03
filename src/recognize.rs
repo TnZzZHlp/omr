@@ -66,7 +66,6 @@ pub struct MultipleSelection {
 }
 
 /// Reading of the candidate number grid, one digit per column.
-/// Reading of the candidate number grid, one digit per column.
 #[derive(Clone, Debug, Serialize)]
 pub struct CandidateNumber {
     /// Digits read from the columns, in template order.
@@ -169,7 +168,6 @@ pub fn register_scan(
     Ok(recognition)
 }
 
-/// Reads the page using an already fitted transform, skipping detection.
 /// Reads the page using an already fitted transform, skipping detection.
 ///
 /// The companion of [`register_scan`]: the annotation pipeline and the
