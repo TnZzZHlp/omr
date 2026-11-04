@@ -37,6 +37,7 @@ pub mod gray;
 pub mod recognize;
 pub mod registration;
 pub mod template;
+pub mod template_json;
 
 pub use annotate::Style;
 pub use barcode::BarcodeResult;

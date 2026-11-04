@@ -93,7 +93,7 @@ fn run(args: Args) -> Result<usize, Box<dyn std::error::Error>> {
             .map_err(|e| e.to_string())?;
     }
 
-    let template = Template::parse_file(&args.template)?;
+    let template = Template::open(&args.template)?;
     let mut scans = Vec::new();
     collect(&args.directory, &mut scans);
     scans.sort();

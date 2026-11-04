@@ -16,7 +16,6 @@ use image::RgbImage;
 /// How the annotation should look.
 #[derive(Clone, Copy, Debug)]
 pub struct Style {
-
     /// Scale of the labels and the thickness of the outlines.
     pub scale: u32,
     /// Draw a light outline around every measured cell.

@@ -52,7 +52,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     };
 
-    let template = Template::parse_file(&args.template)?;
+    let template = Template::open(&args.template)?;
     let scan = Gray::open(&args.scan)?;
     let recognition =
         recognize::register_scan(&template, args.page, &scan, args.crop, Options::default())?;

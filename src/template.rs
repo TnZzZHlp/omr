@@ -186,6 +186,19 @@ pub struct Template {
 }
 
 impl Template {
+    /// Reads and parses a template from disk, dispatching on the content: a
+    /// JSON document (the scan-centre `/smmb/get.jsmeb` payload) goes through
+    /// the JSON parser, anything else through the GBK XML parser.
+    pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self> {
+        let bytes = std::fs::read(path.as_ref())?;
+        if let Ok(text) = std::str::from_utf8(&bytes) {
+            if text.trim_start().starts_with('{') {
+                return Self::parse_json(&bytes);
+            }
+        }
+        Self::parse(&bytes)
+    }
+
     /// Reads and parses a `.mb` file from disk.
     pub fn parse_file(path: impl AsRef<Path>) -> Result<Self> {
         let bytes = std::fs::read(path)?;
