@@ -1,0 +1,437 @@
+{
+  "page": 0,
+  "template_id": "0092be01cf0a43e9b56e05addd0e35b7",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.22,
+    "scale_x": 0.983,
+    "scale_y": 0.985
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "0",
+    "needs_review": false,
+    "confidence": 1.0
+  },
+  "candidate_number": {
+    "value": "1",
+    "digits": [
+      "1"
+    ],
+    "needs_review": false
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 1,
+      "name": "1",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.51
+    },
+    {
+      "question": 2,
+      "name": "2",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.64
+    },
+    {
+      "question": 3,
+      "name": "3",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.51
+    },
+    {
+      "question": 4,
+      "name": "4",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.38
+    },
+    {
+      "question": 5,
+      "name": "5",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.41
+    },
+    {
+      "question": 6,
+      "name": "6",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.54
+    },
+    {
+      "question": 7,
+      "name": "7",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.59
+    },
+    {
+      "question": 8,
+      "name": "8",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.46
+    },
+    {
+      "question": 9,
+      "name": "9",
+      "selected": "B",
+      "also_marked": [
+        "A",
+        "D",
+        "C"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.62
+    },
+    {
+      "question": 10,
+      "name": "10",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.87
+    },
+    {
+      "question": 11,
+      "name": "11",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 12,
+      "name": "12",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 13,
+      "name": "13",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
+    },
+    {
+      "question": 14,
+      "name": "14",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
+    },
+    {
+      "question": 15,
+      "name": "15",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 16,
+      "name": "16",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.74
+    },
+    {
+      "question": 17,
+      "name": "17",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.41
+    },
+    {
+      "question": 18,
+      "name": "18",
+      "needs_review": false,
+      "confidence": 0.68
+    },
+    {
+      "question": 19,
+      "name": "19",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.77
+    },
+    {
+      "question": 20,
+      "name": "20",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.74
+    },
+    {
+      "question": 21,
+      "name": "21",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.43
+    },
+    {
+      "question": 22,
+      "name": "22",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.26
+    },
+    {
+      "question": 23,
+      "name": "23",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 24,
+      "name": "24",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 25,
+      "name": "25",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.59
+    },
+    {
+      "question": 26,
+      "name": "26",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.64
+    },
+    {
+      "question": 27,
+      "name": "27",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.38
+    },
+    {
+      "question": 28,
+      "name": "28",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 29,
+      "name": "29",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.32
+    },
+    {
+      "question": 30,
+      "name": "30",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.43
+    },
+    {
+      "question": 31,
+      "name": "31",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.61
+    },
+    {
+      "question": 32,
+      "name": "32",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.43
+    },
+    {
+      "question": 33,
+      "name": "33",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 34,
+      "name": "34",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.41
+    },
+    {
+      "question": 35,
+      "name": "35",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.77
+    },
+    {
+      "question": 46,
+      "name": "46",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.56
+    },
+    {
+      "question": 47,
+      "name": "47",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.51
+    },
+    {
+      "question": 48,
+      "name": "48",
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.36
+    },
+    {
+      "question": 49,
+      "name": "49",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.89
+    },
+    {
+      "question": 50,
+      "name": "50",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.69
+    },
+    {
+      "question": 51,
+      "name": "51",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.38
+    },
+    {
+      "question": 52,
+      "name": "52",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.7
+    },
+    {
+      "question": 53,
+      "name": "53",
+      "needs_review": false,
+      "confidence": 0.68
+    },
+    {
+      "question": 54,
+      "name": "54",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.64
+    },
+    {
+      "question": 55,
+      "name": "55",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.46
+    },
+    {
+      "question": 56,
+      "name": "56",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.82
+    },
+    {
+      "question": 57,
+      "name": "57",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.83
+    },
+    {
+      "question": 58,
+      "name": "58",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.32
+    },
+    {
+      "question": 59,
+      "name": "59",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.54
+    },
+    {
+      "question": 60,
+      "name": "60",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.74
+    },
+    {
+      "question": 61,
+      "name": "61",
+      "also_marked": [
+        "C",
+        "A",
+        "B"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.52
+    },
+    {
+      "question": 62,
+      "name": "62",
+      "also_marked": [
+        "B",
+        "D",
+        "A"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.52
+    },
+    {
+      "question": 63,
+      "name": "63",
+      "also_marked": [
+        "C",
+        "A",
+        "B"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.47
+    },
+    {
+      "question": 64,
+      "name": "64",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.92
+    },
+    {
+      "question": 65,
+      "name": "65",
+      "also_marked": [
+        "C",
+        "A",
+        "B"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.55
+    }
+  ],
+  "review_count": 52,
+  "overlay": "00010be1:943189bdb70762da"
+}
