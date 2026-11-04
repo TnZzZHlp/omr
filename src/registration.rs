@@ -461,15 +461,17 @@ pub fn register(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Regi
 /// marks from the predicted positions, and fits again; the transform between
 /// the recorded and fitted positions is what the caller applies.
 fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Registration> {
-    let corners: Vec<(Point, f64, Option<&Gray2>)> = page
+    let corners: Vec<(Point, f64, Option<&Gray2>, Option<Rect>)> = page
         .marks
         .iter()
         .filter_map(|mark| {
             mark.found.map(|found| {
+                let window = mark.window.then_some(found);
                 (
                     mark_point(mark, found),
                     mark_size(mark),
                     mark.patch.as_ref(),
+                    window,
                 )
             })
         })
@@ -485,7 +487,7 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
     // First pass: the template records the four corners of the sheet and the scan
     // is that sheet, so mapping the template's bounding rectangle onto the scan's
     // gives a first guess for every corner.
-    let template_box = bounding_box(corners.iter().map(|(p, _, _)| *p));
+    let template_box = bounding_box(corners.iter().map(|(p, ..)| *p));
     // Two first guesses are worth trying: the marks mapped onto the whole scan,
     // and the template at its own scale in place. The former suits a scan that
     // fills the frame, the latter one where the sheet sits on a larger platen;
@@ -495,7 +497,7 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
 
     let mut image_points = Vec::with_capacity(4);
     let mut search = DarknessSearch::new();
-    for (center, size, patch) in &corners {
+    for (center, size, patch, window) in &corners {
         let expected = guess.apply(*center);
         let mut found = None;
         let mut last_span: Option<isize> = None;
@@ -511,7 +513,7 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
             let attempt_patch = if last_span == Some(span) { None } else { *patch };
             last_span = Some(span);
             if let Some(point) =
-                locate_mark(scan, expected, *size * guess_scale, attempt_patch, attempt, &mut search)
+                locate_mark(scan, expected, *size * guess_scale, attempt_patch, *window, attempt, &mut search)
             {
                 found = Some(point);
                 break;
@@ -535,7 +537,7 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
                 let attempt_patch = if last_span == Some(span) { None } else { *patch };
                 last_span = Some(span);
                 if let Some(point) =
-                    locate_mark(scan, expected, *size * guess_scale, attempt_patch, attempt, &mut search)
+                    locate_mark(scan, expected, *size * guess_scale, attempt_patch, *window, attempt, &mut search)
                 {
                     found = Some(point);
                     break;
@@ -553,16 +555,17 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
 
     // Second pass: with four marks the scale and offset are known, so the search
     // is repeated from the fitted positions and the fit is refined.
-    let template_points: Vec<Point> = corners.iter().map(|(p, _, _)| *p).collect();
+    let template_points: Vec<Point> = corners.iter().map(|(p, ..)| *p).collect();
     let coarse = Homography::fit(&template_points, &image_points)?;
     let mut refined = Vec::with_capacity(4);
-    for (index, (_, size, patch)) in corners.iter().enumerate() {
+    for (index, (_, size, patch, window)) in corners.iter().enumerate() {
         let predicted = coarse.apply(template_points[index]);
         let point = locate_mark(
             scan,
             predicted,
             *size * coarse_scale(&coarse),
             *patch,
+            *window,
             options,
             &mut search,
         )
@@ -583,7 +586,7 @@ fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result
     };
     let mark = corners
         .iter()
-        .map(|(_, size, _)| *size)
+        .map(|(_, size, ..)| *size)
         .fold(0.0f64, f64::max);
     let registration = finish(transform, template_points, refined)?;
     if registration.is_implausible(mark) {
@@ -987,6 +990,7 @@ fn locate_mark(
     expected: Point,
     size: f64,
     patch: Option<&Gray2>,
+    window: Option<Rect>,
     options: DetectOptions,
     search: &mut DarknessSearch,
 ) -> Option<Point> {
@@ -1000,7 +1004,18 @@ fn locate_mark(
     // settles a square mark immediately; the stamp is only consulted when it does
     // not produce a plausible mark, which is what happens for the triangular and
     // ring-shaped ones.
-    if let Some(dark) = darkness_mark(scan, expected, size, options, search) {
+    // A window-style mark (the JSON `lx=0` marks) may sit anywhere inside its
+    // declared box, so the sweep is clipped to the box and a hit is accepted
+    // when it lands inside — ink elsewhere (page headers, handwriting) loses
+    // no matter how dark.
+    let hit = match window {
+        Some(bounds) => {
+            let dark = darkness_mark_in_bounds(scan, bounds, size, options, search)?;
+            if bounds.contains(dark) { Some(dark) } else { None }
+        }
+        None => darkness_mark(scan, expected, size, options, search),
+    };
+    if let Some(dark) = hit {
         let tolerance = (size * 1.5).max(20.0);
         if dark.distance(expected) <= tolerance {
             return Some(dark);
@@ -1032,16 +1047,32 @@ fn darkness_mark(
 ) -> Option<Point> {
     let size = size.max(4.0);
     let radius = size * options.search_radius.max(1.0);
-    let window = (size * options.window_ratio.max(0.2) / 2.0)
-        .round()
-        .max(1.0) as isize;
     let x0 = (expected.x - radius).floor().max(0.0) as usize;
     let y0 = (expected.y - radius).floor().max(0.0) as usize;
     let x1 = ((expected.x + radius).ceil() as usize).min(scan.width().saturating_sub(1));
     let y1 = ((expected.y + radius).ceil() as usize).min(scan.height().saturating_sub(1));
-    if x1 <= x0 || y1 <= y0 {
-        return None;
-    }
+    darkest_window(scan, x0, y0, x1, y1, size, options, search)
+        .filter(|(darkness, _, _)| *darkness >= options.min_mark_darkness)
+        .map(|(_, cx, cy)| refine_center(scan, cx as isize, cy as isize,
+            (size * options.window_ratio.max(0.2) / 2.0).round().max(1.0) as isize, options))
+}
+
+/// The darkest sampling window inside the box `(x0,y0)..(x1,y1)`, returning
+/// `(darkness, x, y)` of the winner.
+fn darkest_window(
+    scan: &Gray,
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    size: f64,
+    options: DetectOptions,
+    search: &mut DarknessSearch,
+) -> Option<(f64, usize, usize)> {
+    let size = size.max(4.0);
+    let window = (size * options.window_ratio.max(0.2) / 2.0)
+        .round()
+        .max(1.0) as isize;
 
     // A window that leaves the image would be padded with the clamped edge pixel,
     // and on a cropped scan that edge is often the dark page border, which would
@@ -1066,6 +1097,22 @@ fn darkness_mark(
     }
 
     let (darkness, cx, cy) = best?;
+    Some((darkness, cx, cy))
+}
+
+/// The darkest window inside the declared box of a window-style mark.
+fn darkness_mark_in_bounds(
+    scan: &Gray,
+    bounds: Rect,
+    size: f64,
+    options: DetectOptions,
+    search: &mut DarknessSearch,
+) -> Option<Point> {
+    let x0 = bounds.x0.floor().max(0.0) as usize;
+    let y0 = bounds.y0.floor().max(0.0) as usize;
+    let x1 = (bounds.x1.ceil() as usize).min(scan.width().saturating_sub(1));
+    let y1 = (bounds.y1.ceil() as usize).min(scan.height().saturating_sub(1));
+    let (darkness, cx, cy) = darkest_window(scan, x0, y0, x1, y1, size, options, search)?;
     if darkness < options.min_mark_darkness {
         return None;
     }
@@ -1073,7 +1120,7 @@ fn darkness_mark(
         scan,
         cx as isize,
         cy as isize,
-        window,
+        (size * options.window_ratio.max(0.2) / 2.0).round().max(1.0) as isize,
         options,
     ))
 }
@@ -1119,7 +1166,7 @@ pub fn locate_mark_for_test(
     patch: Option<&Gray2>,
     options: DetectOptions,
 ) -> Option<Point> {
-    locate_mark(scan, expected, size, patch, options, &mut DarknessSearch::new())
+    locate_mark(scan, expected, size, patch, None, options, &mut DarknessSearch::new())
 }
 
 /// Integral image of the inverted scan, so the darkness search can price a

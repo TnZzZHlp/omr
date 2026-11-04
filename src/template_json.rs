@@ -46,8 +46,10 @@ struct MarkDef {
     x2: String,
     #[serde(default)]
     y2: String,
+    /// Minimum filled fraction of the mark, percent 0..100. 0 means the
+    /// generator did not measure the mark; the box may hold several separate
+    /// shapes, so the detector should not demand a solid square.
     #[serde(default)]
-    #[allow(dead_code)]
     minrate: String,
 }
 
@@ -124,11 +126,20 @@ impl Template {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        let minrate = root
+            .dwds
+            .values()
+            .flat_map(|marks| marks.iter())
+            .filter_map(|m| m.minrate.trim().parse::<f64>().ok())
+            .map(|v| v / 100.0)
+            .next();
+
         Ok(Template {
             version: "json".into(),
             id: root.mbid,
             dpi: 0.0,
             pages,
+            mark_minrate: minrate,
         })
     }
 }
@@ -155,12 +166,16 @@ fn marks_of(
         if (x2 - x1).abs() <= 1.0 || (y2 - y1).abs() <= 1.0 {
             continue;
         }
+        // `lx=0` marks declare a search window the mark sits inside (possibly
+        // a wide strip of several shapes); `lx=1` marks state the mark itself.
+        let window = def.lx == 0;
         marks.push(Mark {
             index: def.xh.max(0) as u32,
             name: format!("mli{}", def.xh),
             origin: Point::new((x1 + x2) / 2.0, (y1 + y2) / 2.0),
             found: Some(Rect::from_corners(Point::new(x1, y1), Point::new(x2, y2))),
             box_declared: true,
+            window,
             patch: None,
         });
     }
@@ -235,10 +250,20 @@ fn item_block(item: &ItemDef, kind: BlockKind, raw_type: &str) -> Result<Block> 
                 if n.len() < 4 {
                     continue;
                 }
-                let label = option_labels
-                    .get(row)
-                    .cloned()
-                    .unwrap_or_else(|| row.to_string());
+                // A single-row item (a question with `ls` options) maps the
+                // labels across the columns; a column-shaped item (a digit
+                // grid with `hs` rows) maps them down the rows.
+                let label = if rows == 1 {
+                    option_labels
+                        .get(column)
+                        .cloned()
+                        .unwrap_or_else(|| column.to_string())
+                } else {
+                    option_labels
+                        .get(row)
+                        .cloned()
+                        .unwrap_or_else(|| row.to_string())
+                };
                 cells.push(Cell {
                     column,
                     row,

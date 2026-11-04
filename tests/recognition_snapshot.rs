@@ -38,7 +38,10 @@ fn template_of(suite: &Path) -> PathBuf {
         .expect("suite reads")
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|e| e == "mb"))
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|e| e == "mb" || e == "json")
+        })
         .collect();
     found.sort();
     found.into_iter().next().expect("suite has a template")
@@ -66,7 +69,7 @@ enum Read {
 }
 
 fn recognise(scan: &Path, template_path: &Path) -> Read {
-    let template = Template::parse_file(template_path).expect("template parses");
+    let template = Template::open(template_path).expect("template parses");
     let image = Gray::open(scan).expect("scan loads");
     match omr::register_scan(&template, page_of(scan), &image, None, Options::default()) {
         Ok(recognition) => Read::Ok(Box::new((template, image, recognition))),
@@ -145,7 +148,12 @@ fn suites() -> Vec<(PathBuf, PathBuf, Vec<PathBuf>)> {
             .read_dir()
             .expect("suite reads")
             .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|e| e == "mb"))
+            .any(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|e| e == "mb" || e == "json")
+            })
         {
             continue;
         }

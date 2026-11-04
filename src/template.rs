@@ -122,6 +122,11 @@ pub struct Mark {
     /// being inferred from the stamp size. Only a stated box means the recorded
     /// position is the mark centre.
     pub box_declared: bool,
+    /// True when the stated box is a search window the mark sits inside, not
+    /// the mark itself (the JSON `lx=0` marks: a wide strip holding several
+    /// shapes). The detector then accepts any hit inside the box instead of
+    /// only near its centre.
+    pub window: bool,
     /// Template raster of the mark, row-major, one byte per pixel.
     pub patch: Option<Gray2>,
 }
@@ -183,6 +188,10 @@ pub struct Template {
     pub dpi: f64,
     /// One entry per scanned side, in declaration order.
     pub pages: Vec<Page>,
+    /// Minimum filled fraction a corner mark must reach, 0..1, as declared by
+    /// `minrate`. `None` when the template does not say; the detector then
+    /// assumes the default solid-square mark.
+    pub mark_minrate: Option<f64>,
 }
 
 impl Template {
@@ -221,6 +230,7 @@ impl Template {
             id: String::new(),
             dpi: 0.0,
             pages: Vec::new(),
+            mark_minrate: None,
         };
 
         loop {
@@ -355,6 +365,7 @@ fn parse_mark(attrs: &AttrMap) -> Mark {
 
     Mark {
         index: attrs.number("idx").unwrap_or(0.0) as u32,
+        window: false,
         name: attrs.first("name"),
         origin: Point::new(
             attrs.number("x").unwrap_or(0.0),

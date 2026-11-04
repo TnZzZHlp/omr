@@ -160,7 +160,24 @@ pub fn register_scan(
         Some(rect) => scan.sub_image(rect),
         None => scan.clone(),
     };
-    let registration = registration::register(page, &work, options.registration)?;
+    // The template's `minrate` says how full a corner mark must be. A 0 (or
+    // small) value means the generator did not measure a solid mark — the JSON
+    // templates write it for multi-shape mark strips — so the solid-square
+    // default would reject real marks on lighter scans and the threshold
+    // relaxes to a floor.
+    let mut registration_options = options.registration;
+    if let Some(minrate) = template.mark_minrate {
+        if minrate < 1.0 {
+            let relaxed = if minrate > 0.0 {
+                minrate * 255.0 * 0.6
+            } else {
+                40.0
+            };
+            registration_options.min_mark_darkness =
+                registration_options.min_mark_darkness.min(relaxed.max(40.0));
+        }
+    }
+    let registration = registration::register(page, &work, registration_options)?;
     let mut recognition = read_page(page, &work, &registration.transform, options);
     recognition.registration = RegistrationInfo::from(&registration);
     recognition.registration.mode = registration.mode;

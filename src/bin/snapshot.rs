@@ -234,7 +234,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let Some(template_path) = find_template(&suite_root)? else {
             continue;
         };
-        let template = Template::parse_file(&template_path)?;
+        let template = Template::open(&template_path)?;
         let mut scans = Vec::new();
         collect_scans(&suite_root, &mut scans)?;
         scans.sort();
@@ -297,12 +297,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// The single `.mb` file of a suite.
+/// The single template of a suite: a `.mb` document or a JSON template.
 fn find_template(dir: &Path) -> Result<Option<PathBuf>, Box<dyn std::error::Error>> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir)?.filter_map(Result::ok) {
         let path = entry.path();
-        if path.extension().is_some_and(|e| e == "mb") {
+        if path
+            .extension()
+            .is_some_and(|e| e == "mb" || e == "json")
+        {
             found.push(path);
         }
     }
@@ -375,7 +378,12 @@ fn suite_of(scan: &Path) -> PathBuf {
             .into_iter()
             .flatten()
             .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|e| e == "mb"));
+            .any(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|e| e == "mb" || e == "json")
+            });
         if has_template {
             return dir.to_path_buf();
         }
