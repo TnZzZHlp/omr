@@ -313,6 +313,18 @@ fn find_template(dir: &Path) -> Result<Option<PathBuf>, Box<dyn std::error::Erro
     Ok(found.into_iter().next())
 }
 
+/// True for a scan of the corpus. Annotations written next to a scan by the CLI
+/// are outputs, not inputs, and must not become fixtures of their own.
+fn is_scan(path: &Path) -> bool {
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+    !name.contains(".annotated.")
+        && path.extension().is_some_and(|e| {
+            e.eq_ignore_ascii_case("jpg")
+                || e.eq_ignore_ascii_case("jpeg")
+                || e.eq_ignore_ascii_case("png")
+        })
+}
+
 fn collect_scans(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     for entry in std::fs::read_dir(dir)?.filter_map(Result::ok) {
         let path = entry.path();
@@ -321,11 +333,7 @@ fn collect_scans(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), Box<dyn std::
                 continue;
             }
             collect_scans(&path, out)?;
-        } else if path.extension().is_some_and(|e| {
-            e.eq_ignore_ascii_case("jpg")
-                || e.eq_ignore_ascii_case("jpeg")
-                || e.eq_ignore_ascii_case("png")
-        }) {
+        } else if is_scan(&path) {
             out.push(path);
         }
     }

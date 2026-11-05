@@ -59,12 +59,20 @@ struct ItemDef {
     /// Type: 0 page number, 2 absence, 4 candidate number grid, 10 scored
     /// question.
     lx: i64,
+    /// Answers expected per question: 1 for a single-choice question, 0 for an
+    /// unconstrained one (multi-select, and the page number's bit sum).
+    #[serde(default = "one")]
+    dx: i64,
     #[serde(default)]
     stfs: f64,
     #[serde(default)]
     stda: String,
     #[serde(default)]
     zxs: Vec<CellDef>,
+}
+
+fn one() -> i64 {
+    1
 }
 
 #[derive(Deserialize)]
@@ -211,7 +219,14 @@ fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
         blocks.push(item_block(item, kind, "2")?);
     }
     for item in root.sts.get(key).unwrap_or(&empty) {
-        blocks.push(item_block(item, BlockKind::Question, "5")?);
+        // `dx` is the JSON spelling of the XML `multi` flag: 1 declares exactly
+        // one answer, anything else leaves the question open to several.
+        let kind = if item.dx == 1 {
+            BlockKind::Question
+        } else {
+            BlockKind::Multiple
+        };
+        blocks.push(item_block(item, kind, "5")?);
     }
     Ok(blocks)
 }

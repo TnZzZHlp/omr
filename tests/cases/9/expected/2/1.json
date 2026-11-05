@@ -1,0 +1,113 @@
+{
+  "page": 0,
+  "template_id": "f59af738fa87472ea0eeb075779bc3ba",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.08,
+    "scale_x": 0.999,
+    "scale_y": 0.999
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.85
+  },
+  "candidate_number": {
+    "value": "1",
+    "digits": [
+      "1"
+    ],
+    "needs_review": false
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 1,
+      "name": "1",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.89
+    },
+    {
+      "question": 2,
+      "name": "2",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.38
+    },
+    {
+      "question": 3,
+      "name": "3",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.45
+    },
+    {
+      "question": 4,
+      "name": "4",
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.89
+    },
+    {
+      "question": 5,
+      "name": "5",
+      "needs_review": false,
+      "confidence": 0.68
+    },
+    {
+      "question": 6,
+      "name": "6",
+      "needs_review": false,
+      "confidence": 0.68
+    },
+    {
+      "question": 7,
+      "name": "7",
+      "also_marked": [
+        "A",
+        "B",
+        "C"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.47
+    },
+    {
+      "question": 8,
+      "name": "8",
+      "also_marked": [
+        "D",
+        "A",
+        "C"
+      ],
+      "reason": "Multiple",
+      "needs_review": true,
+      "confidence": 0.52
+    }
+  ],
+  "multiple": [
+    {
+      "name": "9",
+      "question": 9,
+      "selected": [],
+      "needs_review": true
+    },
+    {
+      "name": "10",
+      "question": 10,
+      "selected": [],
+      "needs_review": true
+    },
+    {
+      "name": "11",
+      "question": 11,
+      "selected": [],
+      "needs_review": true
+    }
+  ],
+  "review_count": 9,
+  "overlay": "00007609:0fceb3db6c8d3f04"
+}

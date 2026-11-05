@@ -63,6 +63,8 @@ pub struct MultipleSelection {
     /// True when at least one option is marked.
     pub answered: bool,
     pub needs_review: bool,
+    /// How clearly the row stands above the printed lettering, 0..1.
+    pub confidence: f64,
 }
 
 /// Reading of the candidate number grid, one digit per column.
@@ -253,6 +255,21 @@ fn read_page_with_mode(
     }
     selections.sort_by_key(|s| s.question.unwrap_or(u32::MAX));
 
+    // Multiple-select rows are measured on their own: a column baseline needs
+    // clean rows to build from, and a page carries too few of these to count on
+    // one being blank. `read_multiple` compares each row against its own
+    // lightest cell instead.
+    let mut multiple: Vec<MultipleSelection> = page
+        .blocks
+        .iter()
+        .filter(|b| b.kind == BlockKind::Multiple)
+        .map(|block| {
+            let cells = fill::measure_solo_block(scan, transform, block, options.measure);
+            read_multiple(block, &cells, options.decide, weight)
+        })
+        .collect();
+    multiple.sort_by_key(|m| m.question.unwrap_or(u32::MAX));
+
     let page_number = page
         .blocks
         .iter()
@@ -281,13 +298,6 @@ fn read_page_with_mode(
         .and_then(|block| barcode::decode_block(scan, transform, block.area).ok());
 
     let candidate_number = read_candidate_number(page, scan, transform, options);
-
-    let multiple: Vec<MultipleSelection> = page
-        .blocks
-        .iter()
-        .filter(|b| b.kind == BlockKind::Multiple)
-        .map(|block| read_multiple(scan, transform, block, options))
-        .collect();
 
     let review_count = selections.iter().filter(|s| s.needs_review).count()
         + multiple.iter().filter(|m| m.needs_review).count()
@@ -369,43 +379,58 @@ fn read_candidate_number(
     })
 }
 
-/// Reads a multiple-select question.
+/// Margin by which a cell must out-ink the lightest cell of its own row before
+/// it counts as marked in a multiple-select question.
 ///
-/// Every option is an independent yes/no decision, so each cell is compared with
-/// the others in the same row to find what stands out, and all options above the
-/// threshold are reported rather than the single strongest one.
-/// Reads a multiple-select block: every cell above the marked floor counts,
-/// in declaration order.
+/// A multiple-select row cannot lean on a column baseline the way a
+/// single-choice row does: a page carries only a handful of such rows, and when
+/// every one is answered there is no clean row left, so the median would be a
+/// mark. The lightest cell of the row is the printed bracket unchanged, which
+/// makes it the reference the other cells can be compared against — pencil lifts
+/// a cell well clear of it, printing noise does not.
+const MULTIPLE_MARGIN: f64 = 0.20;
+
+/// Reads a multiple-select question: every option clearly darker than the
+/// lightest option of the same row is reported.
 fn read_multiple(
-    scan: &Gray,
-    transform: &Homography,
     block: &Block,
-    options: Options,
+    cells: &[CellMeasure],
+    options: DecideOptions,
+    weight: f64,
 ) -> MultipleSelection {
-    let cells = fill::measure_solo_block(scan, transform, block, options.measure);
     let best = cells.iter().map(|c| c.solid).fold(0.0f64, f64::max);
-    let floor = (best * options.decide.rival_ratio).max(options.decide.min_score);
+    let lightest = cells.iter().map(|c| c.solid).fold(f64::MAX, f64::min);
+    // A page whose multiple-select rows are all answered has no unmarked
+    // reference left, so the row's own lightest cell stands in for it and the
+    // margin does the separating. `min_score` keeps an almost empty row from
+    // voting on noise alone.
+    let floor = (lightest + MULTIPLE_MARGIN).max(options.min_score);
+    let marked = best >= floor;
 
     let selected: Vec<String> = block
         .cells
         .iter()
-        .zip(&cells)
+        .zip(cells)
         .filter(|(_, measure)| measure.solid >= floor)
         .map(|(cell, _)| cell.label.clone())
         .collect();
 
-    let readable = !selected.is_empty() && best >= options.decide.confident_score;
     MultipleSelection {
         question: block.question,
         name: block.name.clone(),
         scores: block
             .cells
             .iter()
-            .zip(&cells)
+            .zip(cells)
             .map(|(cell, measure)| (cell.label.clone(), measure.solid))
             .collect(),
         answered: !selected.is_empty(),
-        needs_review: !readable,
+        needs_review: (!marked && best > options.min_score) || selected.is_empty(),
+        confidence: if marked {
+            ((best - lightest) / MULTIPLE_MARGIN).clamp(0.0, 1.0) * weight
+        } else {
+            0.0
+        },
         selected,
     }
 }
