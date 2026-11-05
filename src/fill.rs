@@ -305,16 +305,18 @@ fn measure_solo(patch: &Patch, options: MeasureOptions) -> CellMeasure {
     }
 }
 
-/// Measures a block against a per-column baseline built from `siblings`.
+/// Measures a group of sibling blocks against per-position baselines.
 ///
-/// Cells of one column differ in height by a pixel in the template, so they are
-/// resampled on a shared lattice and compared at matching positions.
-/// Measures a group of sibling blocks against per-column baselines.
+/// Siblings are read as a stack: cell `i` of one block is the same printed
+/// shape as cell `i` of the others. For question rows that is option A of
+/// every row; for the digit columns of a candidate number grid it is the glyph
+/// for 0 of every column, so the same machinery removes both the printed
+/// letter and the printed digit.
 ///
-/// Every block is resampled on the shared lattice, each column of cells gets
-/// a baseline from the clean (unmarked) rows, and each cell is measured as
-/// "how much darker than the baseline" — which removes the printed letter and
-/// bracket exactly. Rows are returned in the order of `siblings`.
+/// Every block is resampled on the shared lattice, each position gets a
+/// baseline from the clean (unmarked) siblings, and each cell is measured as
+/// "how much darker than the baseline" — which removes the printed letter,
+/// bracket and digit exactly. Rows are returned in the order of `siblings`.
 pub fn measure_group(
     scan: &Gray,
     transform: &Homography,
@@ -340,8 +342,16 @@ pub fn measure_group(
         })
         .collect();
 
-    let columns = siblings.iter().map(|b| b.columns()).max().unwrap_or(0);
-    let baselines: Vec<Option<Patch>> = (0..columns)
+    // Question blocks declare the same options in every row and digit columns
+    // declare the same digits in every column, so a cell's position in its
+    // block is the shape it prints; the number of positions is therefore the
+    // cell count, not the highest column index.
+    let positions = siblings
+        .iter()
+        .map(|b| b.cells.len())
+        .max()
+        .unwrap_or(0);
+    let baselines: Vec<Option<Patch>> = (0..positions)
         .map(|column| {
             let stacked: Vec<&Patch> = patches.iter().filter_map(|row| row.get(column)).collect();
             column_baseline(&stacked)
@@ -352,7 +362,7 @@ pub fn measure_group(
     // median is the mark itself, and subtracting it erases real answers (a
     // column of five C marks would read blank). Measure such columns on
     // their own, like ungrouped blocks.
-    let clean_counts: Vec<usize> = (0..columns)
+    let clean_counts: Vec<usize> = (0..positions)
         .map(|column| {
             let stacked: Vec<&Patch> = patches.iter().filter_map(|row| row.get(column)).collect();
             column_clean_count(&stacked)

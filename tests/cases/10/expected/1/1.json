@@ -1,0 +1,94 @@
+{
+  "page": 0,
+  "template_id": "00a7af5229184f2c9baa45c5fc25f636",
+  "registration": {
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.02,
+    "scale_x": 0.999,
+    "scale_y": 1.0
+  },
+  "page_number": {
+    "name": "PNO",
+    "selected": "1",
+    "needs_review": false,
+    "confidence": 0.9
+  },
+  "candidate_number": {
+    "value": "1011210128",
+    "digits": [
+      "1",
+      "0",
+      "1",
+      "1",
+      "2",
+      "1",
+      "0",
+      "1",
+      "2",
+      "8"
+    ],
+    "needs_review": false
+  },
+  "absent": false,
+  "selections": [
+    {
+      "question": 1,
+      "name": "1",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 2,
+      "name": "2",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.99
+    },
+    {
+      "question": 3,
+      "name": "3",
+      "selected": "B",
+      "needs_review": false,
+      "confidence": 0.85
+    },
+    {
+      "question": 4,
+      "name": "4",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 1.0
+    },
+    {
+      "question": 5,
+      "name": "5",
+      "selected": "A",
+      "needs_review": false,
+      "confidence": 0.97
+    },
+    {
+      "question": 6,
+      "name": "6",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.87
+    },
+    {
+      "question": 7,
+      "name": "7",
+      "selected": "D",
+      "needs_review": false,
+      "confidence": 0.87
+    },
+    {
+      "question": 8,
+      "name": "8",
+      "selected": "C",
+      "needs_review": false,
+      "confidence": 0.97
+    }
+  ],
+  "review_count": 0,
+  "overlay": "00008f8f:22d21c09fa89e095"
+}

@@ -202,7 +202,7 @@ fn marks_of(
 fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
     let mut blocks = Vec::new();
     if let Some(item) = root.yms.get(key) {
-        blocks.push(item_block(item, BlockKind::PageNumber, "1")?);
+        blocks.extend(item_blocks(item, BlockKind::PageNumber, "1")?);
     }
     let empty = Vec::new();
     for item in root.xxds.get(key).unwrap_or(&empty) {
@@ -222,7 +222,7 @@ fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
                 )))
             }
         };
-        blocks.push(item_block(item, kind, "2")?);
+        blocks.extend(item_blocks(item, kind, "2")?);
     }
     for item in root.sts.get(key).unwrap_or(&empty) {
         // `dx` is the JSON spelling of the XML `multi` flag: 1 declares exactly
@@ -232,7 +232,7 @@ fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
         } else {
             BlockKind::Multiple
         };
-        blocks.push(item_block(item, kind, "5")?);
+        blocks.extend(item_blocks(item, kind, "5")?);
     }
     Ok(blocks)
 }
@@ -259,12 +259,44 @@ fn is_barcode_area(item: &ItemDef) -> bool {
     cells <= 1 || tallest > 40.0
 }
 
-/// Converts one item into a block by expanding every `zbs` rectangle into a
-/// cell. Each `zx` is one option column of the item; `hs` rows by `ls`
-/// columns of cells live inside it, laid out vertically.
-fn item_block(item: &ItemDef, kind: BlockKind, raw_type: &str) -> Result<Block> {
+/// Converts one item into its blocks.
+///
+/// An item declares its geometry as one or more `zx` groups. A question keeps
+/// every option of one row in a single group, so it stays one block. A digit
+/// grid declares one group per digit column, and those columns are read
+/// independently, so each group becomes a block of its own exactly the way the
+/// `.mb` format writes `KSH.1`, `KSH.2`, … — collapsing them into one block
+/// would rank all hundred cells of the grid against each other and report a
+/// single digit instead of the number.
+fn item_blocks(item: &ItemDef, kind: BlockKind, raw_type: &str) -> Result<Vec<Block>> {
+    let digit_grid = kind == BlockKind::CandidateNumber
+        && item.zxs.len() > 1
+        && item.zxs.iter().all(|zx| zx.hs > 1);
+    if !digit_grid {
+        return Ok(vec![item_block(item, &item.zxs, item.sbx.clone(), kind, raw_type)?]);
+    }
+    item.zxs
+        .iter()
+        .enumerate()
+        .map(|(index, zx)| {
+            let name = format!("{}.{}", item.sbx, index + 1);
+            item_block(item, std::slice::from_ref(zx), name, kind, raw_type)
+        })
+        .collect()
+}
+
+/// Converts one item, or one `zx` group of it, into a block by expanding every
+/// `zbs` rectangle into a cell; `hs` rows by `ls` columns of cells live inside
+/// each group, laid out down the rows of each column.
+fn item_block(
+    item: &ItemDef,
+    zxs: &[CellDef],
+    name: String,
+    kind: BlockKind,
+    raw_type: &str,
+) -> Result<Block> {
     let mut cells = Vec::new();
-    for zx in &item.zxs {
+    for zx in zxs {
         let specs: Vec<&str> = zx.zbs.split(';').filter(|s| !s.trim().is_empty()).collect();
         let numbers: Vec<Vec<f64>> = specs
             .iter()
@@ -318,8 +350,7 @@ fn item_block(item: &ItemDef, kind: BlockKind, raw_type: &str) -> Result<Block> 
     }
     if cells.is_empty() {
         return Err(Error::Template(format!(
-            "item {} declares no cells",
-            item.sbx
+            "item {name} declares no cells"
         )));
     }
 
@@ -334,7 +365,7 @@ fn item_block(item: &ItemDef, kind: BlockKind, raw_type: &str) -> Result<Block> 
     let score = (item.stfs > 0.0).then_some(item.stfs);
 
     Ok(Block {
-        name: item.sbx.clone(),
+        name,
         kind,
         question,
         answer_key,

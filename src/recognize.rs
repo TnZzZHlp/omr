@@ -330,10 +330,9 @@ fn read_page_with_mode(
 ///
 /// The number is printed as one column of ten digit cells per digit, so each
 /// column is decided on its own and the digits are joined in template order.
-/// Reads the candidate number columns left to right; a column contributes a
-/// digit when exactly one cell is marked, otherwise a `?` placeholder keeps
-/// the column count stable. The value is only reported when every column
-/// resolves.
+/// The columns are measured as one group because they share their glyph rows:
+/// a printed 8 or 9 carries far more ink than a printed 1, and ranking those
+/// solo would put a printed glyph above a real pencil mark.
 fn read_candidate_number(
     page: &Page,
     scan: &Gray,
@@ -358,16 +357,25 @@ fn read_candidate_number(
     let mut value = String::new();
     let mut columns = Vec::with_capacity(blocks.len());
     let mut confidence = 1.0f64;
-    for block in blocks {
-        let cells = fill::measure_solo_block(scan, transform, block, options.measure);
-        let decision = fill::decide(&cells, options.decide);
+    // A digit grid declares one block per column, and those blocks share their
+    // rows, so they are measured as a group when there are enough of them.
+    let measured: Vec<Vec<fill::CellMeasure>> = if blocks.len() >= 3 {
+        fill::measure_group(scan, transform, &blocks, options.measure)
+    } else {
+        blocks
+            .iter()
+            .map(|block| fill::measure_solo_block(scan, transform, block, options.measure))
+            .collect()
+    };
+    for (block, cells) in blocks.iter().zip(&measured) {
+        let decision = fill::decide(cells, options.decide);
         let digit = decision
             .best
             .map(|i| block.cells[i].label.clone())
             .unwrap_or_else(|| "-".to_owned());
         value.push_str(&digit);
         confidence = confidence.min(decision.confidence);
-        columns.push(selection(block, &cells, options.decide));
+        columns.push(selection(block, cells, options.decide));
     }
 
     let needs_review = columns.iter().any(|c| c.needs_review);
