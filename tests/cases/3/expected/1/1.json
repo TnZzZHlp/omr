@@ -14,6 +14,10 @@
     "needs_review": false,
     "confidence": 0.86
   },
+  "barcode": {
+    "text": "20240641",
+    "check_ok": true
+  },
   "absent": false,
   "selections": [
     {
@@ -130,5 +134,5 @@
     }
   ],
   "review_count": 0,
-  "overlay": "00004f4b:56a38cbc746fa3b4"
+  "overlay": "00005fcf:314e6aa725c3ae81"
 }

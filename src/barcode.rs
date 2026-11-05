@@ -155,8 +155,14 @@ pub fn decode_block(scan: &Gray, transform: &Homography, area: Rect) -> Result<B
         ));
     }
 
+    // The fractions are of the busiest row, and that row is not always a bar
+    // row: a line of text printed across the sticker changes ink to paper more
+    // often than the symbol does. Lower fractions add the symbol band as well;
+    // a text band is then dropped by the height test below, and an extra band
+    // only costs a decode attempt, because a validated check symbol ends the
+    // search.
     let mut bands: Vec<(usize, usize)> = Vec::new();
-    for fraction in [0.8f64, 0.65, 0.5] {
+    for fraction in [0.8f64, 0.65, 0.5, 0.4, 0.3] {
         let threshold = (busiest as f64 * fraction) as usize;
         let mut start_row: Option<usize> = None;
         for (y, count) in transitions.iter().enumerate() {

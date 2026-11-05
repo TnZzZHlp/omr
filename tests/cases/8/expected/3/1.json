@@ -14,13 +14,6 @@
     "needs_review": false,
     "confidence": 1.0
   },
-  "candidate_number": {
-    "value": "1",
-    "digits": [
-      "1"
-    ],
-    "needs_review": false
-  },
   "absent": false,
   "selections": [
     {
@@ -433,5 +426,5 @@
     }
   ],
   "review_count": 52,
-  "overlay": "00010be1:943189bdb70762da"
+  "overlay": "0000f934:fc30fe1540d12fdc"
 }

@@ -208,6 +208,12 @@ fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
     for item in root.xxds.get(key).unwrap_or(&empty) {
         let kind = match item.lx {
             2 => BlockKind::Absent,
+            // The scanner prints the number as a Code 128 symbol above the
+            // digit grid and declares the whole sticker as one cell, so the
+            // digit grid cannot be read from this item; the barcode is the
+            // reading. JSON templates that do declare a real grid get the grid
+            // reading instead.
+            4 if is_barcode_area(item) => BlockKind::Barcode,
             4 => BlockKind::CandidateNumber,
             other => {
                 return Err(Error::Template(format!(
@@ -229,6 +235,28 @@ fn blocks_of(root: &Root, key: &str) -> Result<Vec<Block>> {
         blocks.push(item_block(item, kind, "5")?);
     }
     Ok(blocks)
+}
+
+/// True when a candidate-number item is the printed sticker rather than a
+/// digit grid.
+///
+/// A grid declares one cell per digit (`ls` columns of ten cells), while the
+/// sticker declares a single cell covering the barcode, the human readable
+/// number and the name. Its height then spans much more than one line of print,
+/// which is what this measures: a digit row is a tenth of a grid column, a
+/// sticker cell is tens of pixels tall.
+fn is_barcode_area(item: &ItemDef) -> bool {
+    let cells: usize = item.zxs.iter().map(|zx| zx.ls.max(1)).sum::<i64>() as usize;
+    let tallest = item
+        .zxs
+        .iter()
+        .flat_map(|zx| zx.zbs.split(';'))
+        .filter_map(|spec| {
+            let parts: Vec<f64> = spec.split(',').map(|v| v.trim().parse().unwrap_or(0.0)).collect();
+            parts.get(3).copied()
+        })
+        .fold(0.0f64, f64::max);
+    cells <= 1 || tallest > 40.0
 }
 
 /// Converts one item into a block by expanding every `zbs` rectangle into a

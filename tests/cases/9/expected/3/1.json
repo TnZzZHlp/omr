@@ -14,12 +14,9 @@
     "needs_review": false,
     "confidence": 0.87
   },
-  "candidate_number": {
-    "value": "1",
-    "digits": [
-      "1"
-    ],
-    "needs_review": false
+  "barcode": {
+    "text": "20260101",
+    "check_ok": true
   },
   "absent": false,
   "selections": [
@@ -111,5 +108,5 @@
     }
   ],
   "review_count": 0,
-  "overlay": "000081c5:5c8642bbbaa6c38b"
+  "overlay": "00008822:463a41b4af10f5b2"
 }
