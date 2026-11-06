@@ -2,11 +2,11 @@
   "page": 0,
   "template_id": "4ad58777465148a69a0e52078b00323d",
   "registration": {
-    "mode": "ContentAligned",
-    "max_residual": 75.9,
-    "rotation_deg": 0.0,
-    "scale_x": 1.0,
-    "scale_y": 1.0
+    "mode": "CornerRegistered",
+    "max_residual": 0.0,
+    "rotation_deg": -0.02,
+    "scale_x": 0.997,
+    "scale_y": 0.99
   },
   "page_number": {
     "name": "PNO",
@@ -23,9 +23,9 @@
     {
       "question": 1,
       "name": "S#1",
-      "selected": "D",
-      "needs_review": false,
-      "confidence": 0.97
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.56
     },
     {
       "question": 2,
@@ -39,7 +39,7 @@
       "name": "S#3",
       "selected": "A",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.98
     },
     {
       "question": 4,
@@ -53,7 +53,7 @@
       "name": "S#5",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.99
     },
     {
       "question": 6,
@@ -72,51 +72,51 @@
     {
       "question": 8,
       "name": "S#8",
-      "selected": "B",
-      "needs_review": false,
-      "confidence": 0.99
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.46
     },
     {
       "question": 9,
       "name": "S#9",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 1.0
     },
     {
       "question": 10,
       "name": "S#10",
-      "selected": "B",
-      "needs_review": false,
-      "confidence": 0.97
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.64
     },
     {
       "question": 11,
       "name": "S#11",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 0.98
     },
     {
       "question": 12,
       "name": "S#12",
-      "selected": "A",
-      "needs_review": false,
-      "confidence": 1.0
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.51
     },
     {
       "question": 13,
       "name": "S#13",
       "selected": "C",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.99
     },
     {
       "question": 14,
       "name": "S#14",
-      "selected": "A",
-      "needs_review": false,
-      "confidence": 0.99
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.77
     },
     {
       "question": 15,
@@ -130,9 +130,9 @@
       "name": "S#16",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.84
+      "confidence": 0.83
     }
   ],
-  "review_count": 0,
-  "overlay": "00003cd2:2524ed8046a03b53"
+  "review_count": 5,
+  "overlay": "00006002:147adb4a77c7a112"
 }

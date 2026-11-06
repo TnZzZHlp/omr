@@ -11,8 +11,10 @@
 //!    marks and blocks in template coordinates.
 //! 2. [`registration::register`] aligns the scan: corner marks first (blobs
 //!    located by darkness, verified by stamp correlation, fitted with a
-//!    projective transform); if the marks cannot be found, the printed content
-//!    of the blocks themselves aligns the scan by translation.
+//!    projective transform and checked against the printed grid); three marks
+//!    are enough, so a folded corner does not stop the page. When too few marks
+//!    can be found, the printed content of the blocks aligns the scan by
+//!    translation.
 //! 3. [`fill`] measures every declared cell — against its column baseline when
 //!    sibling rows share the printed letter, absolutely when they do not — and
 //!    [`recognize::register_scan`] decides the reading with per-question

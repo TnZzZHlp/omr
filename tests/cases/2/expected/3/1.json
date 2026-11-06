@@ -3,7 +3,7 @@
   "template_id": "1c3e796c1f0a477499743374f3cc5b42",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 3.2,
+    "max_residual": 0.0,
     "rotation_deg": 0.04,
     "scale_x": 1.004,
     "scale_y": 1.005
@@ -12,7 +12,7 @@
     "name": "PNO",
     "selected": "1",
     "needs_review": false,
-    "confidence": 0.87
+    "confidence": 0.83
   },
   "candidate_number": {
     "value": "1107180113",
@@ -37,14 +37,14 @@
       "name": "S#1",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.98
     },
     {
       "question": 2,
       "name": "S#2",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 0.98
     },
     {
       "question": 3,
@@ -65,14 +65,14 @@
       "name": "S#5",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.95
     },
     {
       "question": 6,
       "name": "S#6",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.95
     },
     {
       "question": 7,
@@ -107,14 +107,14 @@
       "name": "S#11",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.99
     },
     {
       "question": 12,
       "name": "S#12",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 1.0
     },
     {
       "question": 13,
@@ -135,7 +135,7 @@
       "name": "S#15",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.98
     },
     {
       "question": 16,
@@ -149,21 +149,21 @@
       "name": "S#17",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.96
     },
     {
       "question": 18,
       "name": "S#18",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.99
     },
     {
       "question": 19,
       "name": "S#19",
       "selected": "B",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.99
     },
     {
       "question": 20,
@@ -198,21 +198,21 @@
       "name": "S#24",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 1.0
     },
     {
       "question": 25,
       "name": "S#25",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.97
     },
     {
       "question": 26,
       "name": "S#26",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.99
     },
     {
       "question": 27,
@@ -244,5 +244,5 @@
     }
   ],
   "review_count": 0,
-  "overlay": "0000c189:b6b4cc10c07291ef"
+  "overlay": "0000c114:677b8b2eca03b510"
 }

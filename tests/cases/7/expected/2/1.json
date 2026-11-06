@@ -3,7 +3,7 @@
   "template_id": "6db432f7858c4d2a88bc48becb62acaa",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 3.0,
+    "max_residual": 0.0,
     "rotation_deg": -0.04,
     "scale_x": 1.002,
     "scale_y": 1.002
@@ -44,7 +44,7 @@
       "name": "S#32",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 1.0
     },
     {
       "question": 33,
@@ -58,7 +58,7 @@
       "name": "S#34",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.57
+      "confidence": 0.32
     },
     {
       "question": 35,
@@ -93,14 +93,14 @@
       "name": "S#39",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 0.98
     },
     {
       "question": 40,
       "name": "S#40",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.85
+      "confidence": 0.83
     },
     {
       "question": 41,
@@ -142,14 +142,14 @@
       "name": "S#46",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.98
     },
     {
       "question": 47,
       "name": "S#47",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 0.96
     },
     {
       "question": 48,
@@ -177,7 +177,7 @@
       "name": "S#51",
       "selected": "C",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.98
     },
     {
       "question": 52,
@@ -212,21 +212,21 @@
       "name": "S#56",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 0.97
     },
     {
       "question": 57,
       "name": "S#57",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.97
     },
     {
       "question": 58,
       "name": "S#58",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.99
     },
     {
       "question": 59,
@@ -240,21 +240,21 @@
       "name": "S#60",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.97
     },
     {
       "question": 61,
       "name": "S#61",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.95
+      "confidence": 0.96
     },
     {
       "question": 62,
       "name": "S#62",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.98
     },
     {
       "question": 63,
@@ -279,5 +279,5 @@
     }
   ],
   "review_count": 1,
-  "overlay": "0000d3d8:9fb1c68962d527cb"
+  "overlay": "0000d418:5da22ad85f23601b"
 }

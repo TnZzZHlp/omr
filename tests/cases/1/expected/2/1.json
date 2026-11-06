@@ -3,7 +3,7 @@
   "template_id": "ef73d2fa17414787885170e29e3d9797",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 0.2,
+    "max_residual": 0.0,
     "rotation_deg": -0.04,
     "scale_x": 1.001,
     "scale_y": 1.002
@@ -37,7 +37,7 @@
       "name": "S#4",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.82
+      "confidence": 0.84
     },
     {
       "question": 8,
@@ -51,9 +51,9 @@
       "name": "S#12",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.82
+      "confidence": 0.83
     }
   ],
   "review_count": 0,
-  "overlay": "0000751f:4b10e858abef93bb"
+  "overlay": "00007522:bb74172921a5d9c5"
 }

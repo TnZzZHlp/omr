@@ -4,9 +4,9 @@
   "registration": {
     "mode": "CornerRegistered",
     "max_residual": 0.0,
-    "rotation_deg": -0.23,
-    "scale_x": 0.984,
-    "scale_y": 0.986
+    "rotation_deg": -0.22,
+    "scale_x": 0.987,
+    "scale_y": 0.987
   },
   "page_number": {
     "name": "PNO",
@@ -32,84 +32,84 @@
       "name": "2",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.95
     },
     {
       "question": 3,
       "name": "3",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.99
     },
     {
       "question": 4,
       "name": "4",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.95
     },
     {
       "question": 5,
       "name": "5",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.81
+      "confidence": 0.87
     },
     {
       "question": 6,
       "name": "6",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.89
+      "confidence": 0.87
     },
     {
       "question": 7,
       "name": "7",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.91
+      "confidence": 0.89
     },
     {
       "question": 8,
       "name": "8",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.85
+      "confidence": 0.81
     },
     {
       "question": 9,
       "name": "9",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.91
+      "confidence": 0.87
     },
     {
       "question": 10,
       "name": "10",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.86
+      "confidence": 0.89
     },
     {
       "question": 11,
       "name": "11",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.95
+      "confidence": 0.98
     },
     {
       "question": 12,
       "name": "12",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.46
+      "confidence": 0.56
     },
     {
       "question": 13,
       "name": "13",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.32
+      "confidence": 0.7
     },
     {
       "question": 14,
@@ -123,28 +123,28 @@
       "name": "15",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.41
+      "confidence": 0.96
     },
     {
       "question": 16,
       "name": "16",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.92
+      "confidence": 0.94
     },
     {
       "question": 17,
       "name": "17",
       "selected": "F",
       "needs_review": false,
-      "confidence": 0.92
+      "confidence": 0.91
     },
     {
       "question": 18,
       "name": "18",
       "selected": "E",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.99
     },
     {
       "question": 19,
@@ -158,35 +158,35 @@
       "name": "20",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.92
     },
     {
       "question": 21,
       "name": "21",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 0.94
     },
     {
       "question": 22,
       "name": "22",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.94
+      "confidence": 0.95
     },
     {
       "question": 23,
       "name": "23",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.97
     },
     {
       "question": 24,
       "name": "24",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.98
     },
     {
       "question": 25,
@@ -200,7 +200,7 @@
       "name": "26",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.95
+      "confidence": 0.96
     },
     {
       "question": 27,
@@ -214,7 +214,7 @@
       "name": "28",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.97
     },
     {
       "question": 29,
@@ -228,119 +228,119 @@
       "name": "30",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.89
+      "confidence": 0.91
     },
     {
       "question": 31,
       "name": "31",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.94
     },
     {
       "question": 32,
       "name": "32",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.97
     },
     {
       "question": 33,
       "name": "33",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.95
     },
     {
       "question": 34,
       "name": "34",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.94
+      "confidence": 0.97
     },
     {
       "question": 35,
       "name": "35",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 0.95
     },
     {
       "question": 46,
       "name": "46",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.83
+      "confidence": 0.89
     },
     {
       "question": 47,
       "name": "47",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.92
     },
     {
       "question": 48,
       "name": "48",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.94
+      "confidence": 0.98
     },
     {
       "question": 49,
       "name": "49",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.96
+      "confidence": 0.97
     },
     {
       "question": 50,
       "name": "50",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 0.92
     },
     {
       "question": 51,
       "name": "51",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.94
+      "confidence": 0.98
     },
     {
       "question": 52,
       "name": "52",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.94
     },
     {
       "question": 53,
       "name": "53",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.98
     },
     {
       "question": 54,
       "name": "54",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.92
+      "confidence": 0.94
     },
     {
       "question": 55,
       "name": "55",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.93
+      "confidence": 0.97
     },
     {
       "question": 56,
       "name": "56",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.89
+      "confidence": 0.93
     },
     {
       "question": 57,
@@ -354,49 +354,49 @@
       "name": "58",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.97
+      "confidence": 0.98
     },
     {
       "question": 59,
       "name": "59",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.91
+      "confidence": 0.9
     },
     {
       "question": 60,
       "name": "60",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.92
+      "confidence": 0.9
     },
     {
       "question": 61,
       "name": "61",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.78
+      "confidence": 0.81
     },
     {
       "question": 62,
       "name": "62",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.83
+      "confidence": 0.78
     },
     {
       "question": 63,
       "name": "63",
       "selected": "A",
       "needs_review": false,
-      "confidence": 0.9
+      "confidence": 0.84
     },
     {
       "question": 64,
       "name": "64",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.87
+      "confidence": 0.82
     },
     {
       "question": 65,
@@ -407,5 +407,5 @@
     }
   ],
   "review_count": 3,
-  "overlay": "00012a2d:53708d859efbaf87"
+  "overlay": "000129e9:919869c27d71c6b7"
 }

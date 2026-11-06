@@ -4,15 +4,15 @@
   "registration": {
     "mode": "CornerRegistered",
     "max_residual": 0.0,
-    "rotation_deg": -0.02,
-    "scale_x": 1.0,
-    "scale_y": 1.005
+    "rotation_deg": -0.0,
+    "scale_x": 1.001,
+    "scale_y": 1.001
   },
   "page_number": {
     "name": "PNO",
     "selected": "1",
     "needs_review": false,
-    "confidence": 0.89
+    "confidence": 0.88
   },
   "candidate_number": {
     "value": "1007210143",
@@ -37,54 +37,54 @@
       "name": "1",
       "selected": "C",
       "needs_review": false,
-      "confidence": 0.99
+      "confidence": 1.0
     },
     {
       "question": 2,
       "name": "2",
       "reason": "NearBlank",
       "needs_review": true,
-      "confidence": 0.07
+      "confidence": 0.26
     },
     {
       "question": 3,
       "name": "3",
       "selected": "B",
       "needs_review": false,
-      "confidence": 0.87
+      "confidence": 0.86
     },
     {
       "question": 4,
       "name": "4",
       "selected": "B",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.98
     },
     {
       "question": 5,
       "name": "5",
       "selected": "D",
       "needs_review": false,
-      "confidence": 0.98
+      "confidence": 0.97
     },
     {
       "question": 6,
       "name": "6",
       "also_marked": [
         "C",
-        "B",
-        "A"
+        "A",
+        "B"
       ],
       "reason": "Multiple",
       "needs_review": true,
-      "confidence": 0.47
+      "confidence": 0.48
     },
     {
       "question": 7,
       "name": "7",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.6
+      "confidence": 0.37
     },
     {
       "question": 8,
@@ -95,5 +95,5 @@
     }
   ],
   "review_count": 3,
-  "overlay": "000090c7:3d2d82ac32c69dc4"
+  "overlay": "00009073:78e802097147dd2d"
 }

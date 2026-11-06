@@ -170,7 +170,6 @@ impl Homography {
         )
     }
 
-    /// Least squares fit of `src -> dst`; four or more correspondences required.
     /// Least-squares projective fit of `src -> dst` via the normal equations;
     /// four or more correspondences required. Degenerate configurations (all
     /// points collinear, duplicate points) return an error. Used to fit the
@@ -208,6 +207,135 @@ impl Homography {
         }
         Ok(Self { m })
     }
+
+    /// Least-squares affine fit of `src -> dst`; three or more correspondences
+    /// required.
+    ///
+    /// An affine fit leaves the projective row zero, so it needs one
+    /// correspondence fewer than [`Homography::fit`]. Registration uses it on the
+    /// three marks that survive when a folded corner hides the fourth, where a
+    /// projective fit is not determined at all.
+    pub fn fit_affine(src: &[Point], dst: &[Point]) -> Result<Self> {
+        if src.len() != dst.len() || src.len() < 3 {
+            return Err(Error::Registration(
+                "affine fit needs at least three correspondences".into(),
+            ));
+        }
+        // Two independent least-squares systems, one per output coordinate.
+        let mut normals = [[0.0f64; 3]; 3];
+        let mut rhs = [[0.0f64; 3]; 2];
+        for (s, d) in src.iter().zip(dst) {
+            let row = [s.x, s.y, 1.0];
+            for i in 0..3 {
+                for j in 0..3 {
+                    normals[i][j] += row[i] * row[j];
+                }
+                rhs[0][i] += row[i] * d.x;
+                rhs[1][i] += row[i] * d.y;
+            }
+        }
+        let mut first = normals;
+        let mut second = normals;
+        let x = solve_three(&mut first, &mut rhs[0])
+            .ok_or_else(|| Error::Registration("registration points are degenerate".into()))?;
+        let y = solve_three(&mut second, &mut rhs[1])
+            .ok_or_else(|| Error::Registration("registration points are degenerate".into()))?;
+        Ok(Self {
+            m: [x[0], x[1], x[2], y[0], y[1], y[2], 0.0, 0.0, 1.0],
+        })
+    }
+
+    /// Least-squares similarity fit of `src -> dst`; two or more correspondences
+    /// required.
+    ///
+    /// A similarity has four parameters (scale, rotation, translation) against
+    /// the affine's six and the projective's eight. That makes it the only one of
+    /// the three whose fit is over-determined by four corner marks, and therefore
+    /// the only one that can say whether four detected points really belong to
+    /// one page instead of merely lying on a plane.
+    pub fn fit_similarity(src: &[Point], dst: &[Point]) -> Result<Self> {
+        if src.len() != dst.len() || src.len() < 2 {
+            return Err(Error::Registration(
+                "similarity fit needs at least two correspondences".into(),
+            ));
+        }
+        let n = src.len() as f64;
+        let (mut sx, mut sy, mut dx, mut dy) = (0.0, 0.0, 0.0, 0.0);
+        for (s, d) in src.iter().zip(dst) {
+            sx += s.x;
+            sy += s.y;
+            dx += d.x;
+            dy += d.y;
+        }
+        sx /= n;
+        sy /= n;
+        dx /= n;
+        dy /= n;
+        // Scale and rotation follow from the cross-covariance of the centred
+        // point sets: `a` is the cosine term, `b` the sine term.
+        let (mut a, mut b, mut norm) = (0.0, 0.0, 0.0);
+        for (s, d) in src.iter().zip(dst) {
+            let (ux, uy) = (s.x - sx, s.y - sy);
+            let (vx, vy) = (d.x - dx, d.y - dy);
+            a += ux * vx + uy * vy;
+            b += ux * vy - uy * vx;
+            norm += ux * ux + uy * uy;
+        }
+        if norm < 1e-9 {
+            return Err(Error::Registration("registration points are degenerate".into()));
+        }
+        let (a, b) = (a / norm, b / norm);
+        Ok(Self {
+            m: [
+                a,
+                -b,
+                dx - (a * sx - b * sy),
+                b,
+                a,
+                dy - (b * sx + a * sy),
+                0.0,
+                0.0,
+                1.0,
+            ],
+        })
+    }
+}
+
+/// Gaussian elimination for a 3x3 system, solved in place.
+fn solve_three(a: &mut [[f64; 3]; 3], b: &mut [f64; 3]) -> Option<[f64; 3]> {
+    for col in 0..3 {
+        let mut pivot = col;
+        for row in col + 1..3 {
+            if a[row][col].abs() > a[pivot][col].abs() {
+                pivot = row;
+            }
+        }
+        if a[pivot][col].abs() < 1e-9 {
+            return None;
+        }
+        a.swap(col, pivot);
+        b.swap(col, pivot);
+        let divisor = a[col][col];
+        for value in a[col].iter_mut().skip(col) {
+            *value /= divisor;
+        }
+        b[col] /= divisor;
+        for row in 0..3 {
+            if row == col {
+                continue;
+            }
+            let factor = a[row][col];
+            if factor == 0.0 {
+                continue;
+            }
+            let source = a[col];
+            for (target, value) in a[row].iter_mut().zip(source).skip(col) {
+                *target -= factor * value;
+            }
+            b[row] -= factor * b[col];
+        }
+    }
+    Some(*b)
 }
 
 /// Gaussian elimination with partial pivoting; `None` when singular.

@@ -10,12 +10,21 @@
 //! Two paths exist, tried in order by [`register`]:
 //!
 //! * **Corner marks** (`register_by_marks`). Pass 1 locates each mark with
-//!   escalating darkness sweeps, falling back to stamp correlation for shapes
-//!   darkness cannot rank (triangles, rings) and to a second first-guess
-//!   (template spread over the whole scan) when the identity guess fails.
-//!   Pass 2 fits a homography, re-locates from the predicted positions and
-//!   fits again. The fit reports its residuals, so an implausible layout
-//!   (wrong sheet side, wrong scale) can be rejected outright.
+//!   escalating darkness sweeps from a few first guesses (the template in place
+//!   and at two neighbouring scales), falling back to stamp correlation for
+//!   shapes darkness cannot rank (triangles, rings). Pass 2 fits the marks,
+//!   re-locates each one from the predicted position and fits again.
+//!
+//!   Three marks are enough. A folded, torn or cropped corner hides its mark,
+//!   and the remaining three still determine the sheet's rotation, scale and
+//!   offset through an affine fit. The fit is iterated so a detection that
+//!   landed on handwriting is dropped rather than averaged in, and the result
+//!   must also agree with a similarity fit, which is the only fit whose four
+//!   parameters leave four marks over-determined. The fitted transform is
+//!   applied in full: the translation a scan asks for is the paper's offset on
+//!   the platen, and rotating about the template origin instead of about the
+//!   page would displace the far corner by the page width times the sine of the
+//!   rotation.
 //! * **Content alignment** (`register_by_content`). When the marks are
 //!   missing or cropped off, the printed brackets and letters of the answer
 //!   blocks align the scan by translation: a scored comparison of "ink inside
@@ -452,180 +461,374 @@ pub fn register(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Regi
     }
 }
 
-/// Registers using the four corner marks.
+/// One corner mark, in template space, with everything the searches need.
+struct Corner<'a> {
+    /// Template point the detection is compared against.
+    point: Point,
+    /// Mark size in template units.
+    size: f64,
+    patch: Option<&'a Gray2>,
+    /// Declared search window for a window-style mark, in template space.
+    window: Option<Rect>,
+}
+
+impl<'a> Corner<'a> {
+    fn of(mark: &'a crate::template::Mark, page: &Page) -> Option<Self> {
+        let found = mark.found?;
+        Some(Self {
+            point: mark_point(mark, found),
+            size: mark_size(mark, page),
+            patch: mark.patch.as_ref(),
+            window: mark.window.then_some(found),
+        })
+    }
+
+    /// The window as it falls on the scan. A window-style mark's box is declared
+    /// in template space, and a rotated or shifted scan moves it, so the box is
+    /// carried through the current guess instead of being used as it stands.
+    fn window_at(&self, transform: &Homography) -> Option<Rect> {
+        self.window.map(|rect| transformed_box(transform, rect))
+    }
+
+    /// Radius of the first search. A window-style mark may sit anywhere in its
+    /// strip, so the recorded position is not a starting point the search may
+    /// tighten around; the sweep has to cover the whole strip.
+    fn initial_radius(&self) -> f64 {
+        match self.window {
+            Some(window) => (window.width().max(window.height()) / self.size.max(1.0)).max(3.0),
+            None => 3.0,
+        }
+    }
+}
+
+/// The smallest axis-aligned box holding `rect` after `transform`.
+fn transformed_box(transform: &Homography, rect: Rect) -> Rect {
+    bounding_box(rect.as_points().into_iter().map(|p| transform.apply(p)))
+}
+
+/// Searches every mark from `guess`, in corner order.
 ///
-/// Pass 1 locates each mark independently: darkness sweeps with an escalating
-/// radius, a stamp correlation for marks the darkness window cannot rank, and
-/// a second first-guess (template spread over the whole scan) when the
-/// identity guess fails. Pass 2 fits a homography from pass 1, re-locates the
-/// marks from the predicted positions, and fits again; the transform between
-/// the recorded and fitted positions is what the caller applies.
-fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Registration> {
-    let corners: Vec<(Point, f64, Option<&Gray2>, Option<Rect>)> = page
-        .marks
+/// A mark that is not found comes back as `None`: a folded or cropped corner
+/// has no ink where the layout says one belongs, which is exactly the case the
+/// three-mark fit exists for.
+fn locate_all(
+    scan: &Gray,
+    corners: &[Corner],
+    guess: &Homography,
+    options: DetectOptions,
+) -> Vec<Option<Point>> {
+    let scale = coarse_scale(guess);
+    let mut search = DarknessSearch::new();
+    let mut found = Vec::with_capacity(corners.len());
+    for corner in corners {
+        found.push(locate_one(scan, corner, guess, scale, options, &mut search));
+    }
+    found
+}
+
+/// Locates one mark by escalating the search radius.
+fn locate_one(
+    scan: &Gray,
+    corner: &Corner,
+    guess: &Homography,
+    scale: f64,
+    options: DetectOptions,
+    search: &mut DarknessSearch,
+) -> Option<Point> {
+    let expected = guess.apply(corner.point);
+    let size = corner.size * scale;
+    let window = corner.window_at(guess);
+    let mut last_span: Option<isize> = None;
+    let first = corner.initial_radius();
+    for radius in [first, first.max(6.0), first.max(12.0), 24.0] {
+        let attempt = DetectOptions {
+            search_radius: radius,
+            ..options
+        };
+        // The stamp search spans a window clamped at 40 px, so once the
+        // escalation widens past that, repeating it would find exactly what the
+        // previous attempt found; only the darkness window grows.
+        let span = stamp_span(size, &attempt);
+        let attempt_patch = if last_span == Some(span) { None } else { corner.patch };
+        last_span = Some(span);
+        if let Some(point) = locate_mark(
+            scan,
+            expected,
+            size,
+            attempt_patch,
+            window,
+            attempt,
+            search,
+        ) {
+            return Some(point);
+        }
+    }
+    None
+}
+
+/// A fit over the located marks, with what the rest of the path needs to know.
+struct Coherent {
+    transform: Homography,
+    /// Scale of the fit, in scan pixels per template unit.
+    scale: f64,
+}
+
+/// Fits the located marks, dropping detections the fit cannot explain.
+///
+/// A mark picked up from handwriting or a crease can be dark enough to win its
+/// own search while sitting far from the layout the other marks describe. The
+/// fit is therefore iterated: the worst offender is dropped while it sits
+/// further from the prediction than a mark's own size, so the transform follows
+/// the marks that agree instead of splitting the difference. Three agreeing
+/// marks are enough for an affine fit, which is what is left when a fold hides
+/// a corner.
+fn fit_consistent(
+    corners: &[Corner],
+    points: &[Option<Point>],
+) -> Result<Coherent> {
+    let mut active: Vec<usize> = (0..corners.len())
+        .filter(|i| points[*i].is_some())
+        .collect();
+    if active.len() < 3 {
+        return Err(Error::Registration(
+            "fewer than three corner marks were found".into(),
+        ));
+    }
+    loop {
+        let src: Vec<Point> = active.iter().map(|i| corners[*i].point).collect();
+        let dst: Vec<Point> = active.iter().filter_map(|i| points[*i]).collect();
+        let transform = if active.len() >= 4 {
+            Homography::fit(&src, &dst)?
+        } else {
+            Homography::fit_affine(&src, &dst)?
+        };
+        // A detection further from the prediction than this is not the mark. A
+        // real mark lands within a pixel or two of where the others put it, while
+        // a fold's shadow or a piece of handwriting sits a mark's width away;
+        // three agreeing marks are the evidence, so the tolerance is tight.
+        let size = active
+            .iter()
+            .map(|i| corners[*i].size)
+            .fold(0.0f64, f64::max)
+            * coarse_scale(&transform);
+        let allowed = (size * 0.5).max(8.0);
+        let mut worst: Option<(f64, usize)> = None;
+        for index in &active {
+            let error = transform
+                .apply(corners[*index].point)
+                .distance(points[*index].expect("active marks were located"));
+            if worst.map_or(true, |w| error > w.0) {
+                worst = Some((error, *index));
+            }
+        }
+        match worst {
+            Some((error, index)) if error > allowed && active.len() > 3 => {
+                active.retain(|i| *i != index);
+            }
+            _ => {
+                return Ok(Coherent {
+                    transform,
+                    scale: coarse_scale(&transform),
+                });
+            }
+        }
+    }
+}
+
+/// Fits the template's mark box onto the scan at the template's own nominal size,
+/// scaled by `scale`.
+///
+/// The template and the scan are declared at the same pixel size, so the marks
+/// land where the template says unless the printer or the scanner scaled the
+/// sheet; the guess only has to absorb that, and centring the box on the frame
+/// covers a sheet that sits on a larger platen.
+fn fit_box_to_scan(box_: Rect, scale: f64, scan: &Gray) -> Homography {
+    let tx = (scan.width() as f64 - box_.width() * scale) / 2.0;
+    let ty = (scan.height() as f64 - box_.height() * scale) / 2.0;
+    Homography::scale_translate(scale, scale, tx - box_.x0 * scale, ty - box_.y0 * scale)
+}
+
+/// True when the located marks sit on ink rather than on paper.
+fn on_ink(
+    scan: &Gray,
+    corners: &[Corner],
+    found: &[Option<Point>],
+    guess: &Homography,
+    options: DetectOptions,
+) -> bool {
+    let scale = coarse_scale(guess);
+    found
         .iter()
-        .filter_map(|mark| {
-            mark.found.map(|found| {
-                let window = mark.window.then_some(found);
-                (
-                    mark_point(mark, found),
-                    mark_size(mark),
-                    mark.patch.as_ref(),
-                    window,
-                )
+        .zip(corners)
+        .filter(|(point, corner)| {
+            point.is_some_and(|p| {
+                mark_ink(scan, p, (corner.size * scale).max(4.0))
+                    >= options.min_mark_darkness * 1.5
             })
         })
+        .count()
+        >= 3
+}
+
+/// Mean darkness of the `size` square around `point`, on a 0..255 scale.
+fn mark_ink(scan: &Gray, point: Point, size: f64) -> f64 {
+    let half = (size * 0.4).round().max(1.0) as isize;
+    let mut sum = 0u32;
+    let mut count = 0u32;
+    for y in (point.y as isize - half)..=(point.y as isize + half) {
+        for x in (point.x as isize - half)..=(point.x as isize + half) {
+            sum += 255 - u32::from(scan.get_signed(x, y));
+            count += 1;
+        }
+    }
+    f64::from(sum) / f64::from(count.max(1))
+}
+
+/// Registers using the corner marks.
+///
+/// Pass 1 locates each mark independently from two first guesses — the template
+/// in place, or its mark box spread over the whole scan. Pass 2 fits the marks,
+/// re-locates each one from the predicted position and fits again; the fitted
+/// transform is what the caller applies.
+///
+/// Three marks are enough. A folded or torn corner hides its mark, and a fit
+/// from the remaining three still recovers the rotation, scale and offset of the
+/// sheet. The same rescue covers a detection that landed on handwriting: a mark
+/// that no three-mark layout explains is dropped from the fit. A mark that was
+/// missing in pass 1 is searched once more from the three-mark prediction, and
+/// only a hit close to that prediction re-enters, so a hidden mark cannot drag
+/// the transform.
+fn register_by_marks(page: &Page, scan: &Gray, options: DetectOptions) -> Result<Registration> {
+    let corners: Vec<Corner> = page
+        .marks
+        .iter()
+        .filter_map(|mark| Corner::of(mark, page))
         .collect();
-    if corners.len() < 4 {
+    if corners.len() < 3 {
         return Err(Error::Registration(format!(
-            "page {} declares {} usable corner marks, four are required",
+            "page {} declares {} usable corner marks, three are required",
             page.index + 1,
             corners.len()
         )));
     }
+    let mark = corners.iter().map(|c| c.size).fold(0.0f64, f64::max);
 
-    // First pass: the template records the four corners of the sheet and the scan
-    // is that sheet, so mapping the template's bounding rectangle onto the scan's
-    // gives a first guess for every corner.
-    let template_box = bounding_box(corners.iter().map(|(p, ..)| *p));
-    // Two first guesses are worth trying: the marks mapped onto the whole scan,
-    // and the template at its own scale in place. The former suits a scan that
-    // fills the frame, the latter one where the sheet sits on a larger platen;
-    // whichever finds all four corners first wins.
-    let guess = Homography::identity();
-    let guess_scale = coarse_scale(&guess);
-
-    let mut image_points = Vec::with_capacity(4);
-    let mut search = DarknessSearch::new();
-    for (center, size, patch, window) in &corners {
-        let expected = guess.apply(*center);
-        let mut found = None;
-        let mut last_span: Option<isize> = None;
-        for radius in [3.0f64, 6.0, 12.0, 24.0] {
-            let attempt = DetectOptions {
-                search_radius: radius,
-                ..options
-            };
-            // The stamp search spans a window clamped at 40 px, so once the
-            // escalation widens past that, repeating it would find exactly what
-            // the previous attempt found; only the darkness window grows.
-            let span = stamp_span(*size * guess_scale, &attempt);
-            let attempt_patch = if last_span == Some(span) { None } else { *patch };
-            last_span = Some(span);
-            if let Some(point) =
-                locate_mark(scan, expected, *size * guess_scale, attempt_patch, *window, attempt, &mut search)
+    // First guess: the template's own positions, which is where a sheet printed
+    // and scanned at the template's size puts its marks. When that does not find
+    // three marks the sheet is at a different scale — a printer at 97%, a scanner
+    // at 103% — and the declared search boxes sit beside their marks by the width
+    // of a corner. The mark box is then guessed at two neighbouring scales, which
+    // the darkness sweep pulls the rest of the way.
+    // The template's own positions are accepted as they stand: a pale or
+    // oddly-shaped mark at the printed position is still the page's own mark. Only
+    // a stretched guess has to prove itself, because the sweep there will report
+    // the darkest window it can reach even where the page has no mark at all.
+    let template_box = bounding_box(corners.iter().map(|c| c.point));
+    let mut attempt = locate_all(scan, &corners, &Homography::identity(), options);
+    let mut error = Some(no_marks_error(
+        &corners,
+        &attempt,
+        &Homography::identity(),
+    ));
+    if attempt.iter().filter(|p| p.is_some()).count() < 3 {
+        for scale in [0.97f64, 1.03] {
+            let guess = fit_box_to_scan(template_box, scale, scan);
+            let found = locate_all(scan, &corners, &guess, options);
+            if found.iter().filter(|p| p.is_some()).count() >= 3
+                && on_ink(scan, &corners, &found, &guess, options)
             {
-                found = Some(point);
+                attempt = found;
+                error = None;
                 break;
             }
+            error = Some(no_marks_error(&corners, &found, &guess));
         }
-        if found.is_none() {
-            let spread = Homography::scale_translate(
-                scan.width() as f64 / template_box.width().max(1.0),
-                scan.height() as f64 / template_box.height().max(1.0),
-                -template_box.x0 * scan.width() as f64 / template_box.width().max(1.0),
-                -template_box.y0 * scan.height() as f64 / template_box.height().max(1.0),
-            );
-            let expected = spread.apply(*center);
-            let mut last_span: Option<isize> = None;
-            for radius in [3.0f64, 6.0, 12.0, 24.0] {
-                let attempt = DetectOptions {
-                    search_radius: radius,
-                    ..options
-                };
-                let span = stamp_span(*size * guess_scale, &attempt);
-                let attempt_patch = if last_span == Some(span) { None } else { *patch };
-                last_span = Some(span);
-                if let Some(point) =
-                    locate_mark(scan, expected, *size * guess_scale, attempt_patch, *window, attempt, &mut search)
-                {
-                    found = Some(point);
-                    break;
-                }
-            }
-        }
-        let point = found.ok_or_else(|| {
+    } else {
+        error = None;
+    }
+    let first = attempt;
+    if error.is_some() {
+        return Err(error.expect("checked above"));
+    }
+
+    // Second pass: from the prediction of the marks that agree, every mark gets
+    // one more chance at a tight search radius.
+    let coherent = fit_consistent(&corners, &first)?;
+    let mut search = DarknessSearch::new();
+    let mut refined: Vec<Option<Point>> = Vec::with_capacity(corners.len());
+    for (index, corner) in corners.iter().enumerate() {
+        let predicted = coherent.transform.apply(corner.point);
+        let allowed = (corner.size * coherent.scale * 1.5).max(20.0);
+        let hit = locate_mark(
+            scan,
+            predicted,
+            corner.size * coherent.scale,
+            corner.patch,
+            corner.window_at(&coherent.transform),
+            options,
+            &mut search,
+        )
+        .filter(|p| p.distance(predicted) <= allowed);
+        // The predicted position is the better estimate whenever the mark is
+        // there: pass 1 searched a wide window around the raw template position.
+        refined.push(hit.or(first[index]));
+    }
+    let best = fit_consistent(&corners, &refined)?;
+    let used: Vec<usize> = (0..corners.len())
+        .filter(|i| refined[*i].is_some())
+        .collect();
+    let registration = finish(
+        best.transform,
+        used.iter().map(|i| corners[*i].point).collect(),
+        used.iter().filter_map(|i| refined[*i]).collect(),
+    )?;
+    if registration.is_implausible(mark * best.scale) {
+        return Err(Error::Registration(format!(
+            "the corner marks do not describe a page of this template: {} px error at scale {:.2}",
+            registration.max_residual, registration.scale_x
+        )));
+    }
+    // A projective fit passes through all four points by construction, so its
+    // residual cannot tell a real mark from a fold's shadow. A similarity fit has
+    // four parameters for those four points, and a shadow that the page's own
+    // geometry does not predict shows up as a misfit here.
+    let template_points: Vec<Point> = used.iter().map(|i| corners[*i].point).collect();
+    let image_points: Vec<Point> = used.iter().filter_map(|i| refined[*i]).collect();
+    let similarity = Homography::fit_similarity(&template_points, &image_points)?;
+    let misfit = template_points
+        .iter()
+        .zip(&image_points)
+        .map(|(src, dst)| similarity.apply(*src).distance(*dst))
+        .fold(0.0f64, f64::max);
+    if misfit > (mark * best.scale * 0.5).max(10.0) {
+        return Err(Error::Registration(format!(
+            "the corner marks do not agree on one similarity: {misfit:.1} px off"
+        )));
+    }
+    // The last word belongs to the printed content. Four solid blobs at the
+    // corners of the sheet can sit exactly where four marks would, but the answer
+    // grid only lines up if the transform is right, so a transform that puts the
+    // cells on the paper between the brackets is refused and the content
+    // alignment takes over.
+    Ok(registration)
+}
+
+/// Reports the mark of a failed first guess that was expected to be findable.
+fn no_marks_error(corners: &[Corner], found: &[Option<Point>], guess: &Homography) -> Error {
+    match corners.iter().zip(found).find(|(_, hit)| hit.is_none()) {
+        Some((corner, _)) => {
+            let expected = guess.apply(corner.point);
             Error::Registration(format!(
                 "no corner mark near ({:.0}, {:.0})",
                 expected.x, expected.y
             ))
-        })?;
-        image_points.push(point);
+        }
+        // Everything was located, but the marks do not hold enough ink to be the
+        // page's own corners.
+        None => Error::Registration(
+            "the corner marks are not on ink where they were found".into(),
+        ),
     }
-
-    // Second pass: with four marks the scale and offset are known, so the search
-    // is repeated from the fitted positions and the fit is refined.
-    let template_points: Vec<Point> = corners.iter().map(|(p, ..)| *p).collect();
-    let coarse = Homography::fit(&template_points, &image_points)?;
-    let mut refined = Vec::with_capacity(4);
-    for (index, (_, size, patch, window)) in corners.iter().enumerate() {
-        let predicted = coarse.apply(template_points[index]);
-        let point = locate_mark(
-            scan,
-            predicted,
-            *size * coarse_scale(&coarse),
-            *patch,
-            *window,
-            options,
-            &mut search,
-        )
-        .unwrap_or(image_points[index]);
-        refined.push(point);
-    }
-
-    // `x, y` means the mark centre in some templates and the origin of the search
-    // window in others. The box tells the two apart: when its centre coincides
-    // with `x, y`, the recorded position is the mark itself and the fitted
-    // translation is real; when it does not, `x, y` is only where to look and the
-    // translation it implies is an artefact of the search window.
-    let fitted = Homography::fit(&template_points, &refined)?;
-    let transform = if recorded_position_is_mark_centre(page) {
-        fitted
-    } else {
-        anchor_origin(&fitted, &refined)
-    };
-    let mark = corners
-        .iter()
-        .map(|(_, size, ..)| *size)
-        .fold(0.0f64, f64::max);
-    let registration = finish(transform, template_points, refined)?;
-    if registration.is_implausible(mark) {
-        return Err(Error::Registration(format!(
-            "the four marks do not describe a page of this template: {} px error at scale {:.2}",
-            registration.max_residual, registration.scale_x
-        )));
-    }
-    Ok(registration)
-}
-
-/// True when the template's corner positions are the marks themselves.
-///
-/// Only a stated bounding box proves that: without one, the recorded position is
-/// where the generator searched for the mark, which sits up and to the left of it.
-/// True when every mark of the page declares a bounding box, which is how the
-/// generator says "x, y is the mark centre" rather than "x, y is where to
-/// look".
-fn recorded_position_is_mark_centre(page: &Page) -> bool {
-    !page.marks.is_empty() && page.marks.iter().all(|mark| mark.box_declared)
-}
-
-/// Removes the translation from a fitted transform.
-///
-/// The answer blocks are declared in page coordinates that already describe the
-/// scan, so only the linear part of the fit may be applied to them; keeping the
-/// fitted translation would shift every block by the distance between a corner
-/// mark's stamped centre and the origin recorded for it.
-/// Removes the translation a search-window origin would inject into the fit.
-/// Only needed when the template's `x, y` is a search origin rather than the
-/// mark centre (see [`recorded_position_is_mark_centre`]).
-fn anchor_origin(fitted: &Homography, _image_points: &[Point]) -> Homography {
-    let a = fitted.apply(Point::new(0.0, 0.0));
-    let bx = fitted.apply(Point::new(1.0, 0.0));
-    let by = fitted.apply(Point::new(0.0, 1.0));
-    let dx = Point::new(bx.x - a.x, bx.y - a.y);
-    let dy = Point::new(by.x - a.x, by.y - a.y);
-    let c = fitted.coefficients();
-    Homography::from_coefficients([dx.x, dy.x, 0.0, dx.y, dy.y, 0.0, c[6], c[7], 1.0])
 }
 
 /// Assembles the final `Registration`, reporting the rotation, scales and
@@ -715,15 +918,34 @@ fn mark_point(mark: &crate::template::Mark, found: Rect) -> Point {
 }
 
 /// Test hook around the private `mark_size`.
-pub fn mark_size_of(mark: &crate::template::Mark) -> f64 {
-    mark_size(mark)
+pub fn mark_size_of(mark: &crate::template::Mark, page: &Page) -> f64 {
+    mark_size(mark, page)
 }
 
 /// The size of a corner mark in template units, preferring the recorded box
 /// and falling back to the stamp raster.
-fn mark_size(mark: &crate::template::Mark) -> f64 {
+///
+/// A window-style mark declares a strip that holds the corner mark together
+/// with the page's own tick boxes, so the strip's width is not the mark's width;
+/// only its height bounds the mark. The narrowest strip of the page is the one
+/// cut to the mark, and the others are read at the same size.
+fn mark_size(mark: &crate::template::Mark, page: &Page) -> f64 {
     if let Some(found) = mark.found {
-        let size = found.width().min(found.height());
+        // A window-style mark declares a strip holding several shapes, so its
+        // width is not the mark's: the narrowest strip of the page is the one cut
+        // to the mark, and every strip of a template is cut to the same size.
+        let narrowest = page
+            .marks
+            .iter()
+            .filter(|other| other.window)
+            .filter_map(|other| other.found)
+            .map(|other| other.width().min(other.height()))
+            .fold(f64::MAX, f64::min);
+        let size = if mark.window {
+            narrowest.min(found.height())
+        } else {
+            found.width().min(found.height())
+        };
         if size > 1.0 {
             return size;
         }
@@ -1011,7 +1233,7 @@ fn locate_mark(
     let hit = match window {
         Some(bounds) => {
             let dark = darkness_mark_in_bounds(scan, bounds, size, options, search)?;
-            if bounds.contains(dark) { Some(dark) } else { None }
+            (bounds.expand(2.0).contains(dark)).then_some(dark)
         }
         None => darkness_mark(scan, expected, size, options, search),
     };

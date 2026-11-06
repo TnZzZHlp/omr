@@ -3,7 +3,7 @@
   "template_id": "ef73d2fa17414787885170e29e3d9797",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 2.3,
+    "max_residual": 0.0,
     "rotation_deg": 0.0,
     "scale_x": 1.007,
     "scale_y": 1.009
@@ -12,7 +12,7 @@
     "name": "PNO",
     "selected": "1",
     "needs_review": false,
-    "confidence": 0.85
+    "confidence": 0.84
   },
   "candidate_number": {
     "value": "0106180131",
@@ -55,5 +55,5 @@
     }
   ],
   "review_count": 0,
-  "overlay": "00007591:08bb8f745c311a00"
+  "overlay": "000075d3:42e51004e52b8fac"
 }

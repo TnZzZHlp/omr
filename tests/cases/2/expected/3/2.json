@@ -3,12 +3,12 @@
   "template_id": "1c3e796c1f0a477499743374f3cc5b42",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 2.1,
+    "max_residual": 0.0,
     "rotation_deg": 0.01,
     "scale_x": 1.004,
     "scale_y": 1.002
   },
   "selections": [],
   "review_count": 0,
-  "overlay": "0000237e:2efb7dacec417508"
+  "overlay": "0000237e:13fcfe7631773688"
 }

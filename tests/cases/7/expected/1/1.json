@@ -3,7 +3,7 @@
   "template_id": "6db432f7858c4d2a88bc48becb62acaa",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 2.7,
+    "max_residual": 0.0,
     "rotation_deg": 0.04,
     "scale_x": 1.003,
     "scale_y": 1.001
@@ -12,7 +12,7 @@
     "name": "PNO",
     "selected": "1",
     "needs_review": false,
-    "confidence": 0.86
+    "confidence": 0.82
   },
   "candidate_number": {
     "value": "1107181453",
@@ -35,15 +35,16 @@
     {
       "question": 31,
       "name": "S#31",
-      "reason": "NearBlank",
+      "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.04
+      "confidence": 0.32
     },
     {
       "question": 32,
       "name": "S#32",
-      "needs_review": false,
-      "confidence": 1.0
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.26
     },
     {
       "question": 33,
@@ -54,15 +55,16 @@
     {
       "question": 34,
       "name": "S#34",
-      "reason": "NearBlank",
+      "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.04
+      "confidence": 0.45
     },
     {
       "question": 35,
       "name": "S#35",
-      "needs_review": false,
-      "confidence": 0.68
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.32
     },
     {
       "question": 36,
@@ -79,40 +81,41 @@
     {
       "question": 38,
       "name": "S#38",
-      "reason": "NearBlank",
+      "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.04
+      "confidence": 0.26
     },
     {
       "question": 39,
       "name": "S#39",
-      "reason": "NearBlank",
+      "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.04
+      "confidence": 0.32
     },
     {
       "question": 40,
       "name": "S#40",
       "also_marked": [
-        "B",
+        "A",
         "C"
       ],
       "reason": "Multiple",
       "needs_review": true,
-      "confidence": 0.5
+      "confidence": 0.51
     },
     {
       "question": 41,
       "name": "S#41",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.45
+      "confidence": 0.7
     },
     {
       "question": 42,
       "name": "S#42",
-      "needs_review": false,
-      "confidence": 1.0
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
     },
     {
       "question": 43,
@@ -144,39 +147,40 @@
       "name": "S#47",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.26
+      "confidence": 0.83
     },
     {
       "question": 48,
       "name": "S#48",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.68
     },
     {
       "question": 49,
       "name": "S#49",
-      "needs_review": false,
-      "confidence": 1.0
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
     },
     {
       "question": 50,
       "name": "S#50",
       "needs_review": false,
-      "confidence": 1.0
+      "confidence": 0.68
     },
     {
       "question": 51,
       "name": "S#51",
-      "reason": "Faint",
+      "reason": "NearBlank",
       "needs_review": true,
-      "confidence": 0.45
+      "confidence": 0.36
     },
     {
       "question": 52,
       "name": "S#52",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.38
+      "confidence": 0.45
     },
     {
       "question": 53,
@@ -195,20 +199,21 @@
       "name": "S#55",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.41
+      "confidence": 0.38
     },
     {
       "question": 56,
       "name": "S#56",
-      "needs_review": false,
-      "confidence": 0.68
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.26
     },
     {
       "question": 57,
       "name": "S#57",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.51
+      "confidence": 0.77
     },
     {
       "question": 58,
@@ -222,7 +227,7 @@
       "name": "S#59",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.45
+      "confidence": 0.26
     },
     {
       "question": 60,
@@ -243,28 +248,30 @@
       "name": "S#62",
       "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.54
+      "confidence": 0.64
     },
     {
       "question": 63,
       "name": "S#63",
-      "needs_review": false,
-      "confidence": 0.68
+      "reason": "Faint",
+      "needs_review": true,
+      "confidence": 0.38
     },
     {
       "question": 64,
       "name": "S#64",
-      "needs_review": false,
-      "confidence": 0.68
+      "reason": "NearBlank",
+      "needs_review": true,
+      "confidence": 0.04
     },
     {
       "question": 65,
       "name": "S#65",
-      "reason": "NearBlank",
+      "reason": "Faint",
       "needs_review": true,
-      "confidence": 0.04
+      "confidence": 0.26
     }
   ],
-  "review_count": 18,
-  "overlay": "0000c11c:f84d93cf70573fbf"
+  "review_count": 25,
+  "overlay": "0000c136:e4363ff06fc5489d"
 }

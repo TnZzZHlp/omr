@@ -3,7 +3,7 @@
   "template_id": "f5235054bf1445bfaf33d09b6e9aa676",
   "registration": {
     "mode": "CornerRegistered",
-    "max_residual": 0.2,
+    "max_residual": 0.0,
     "rotation_deg": -0.05,
     "scale_x": 1.0,
     "scale_y": 0.999
@@ -43,5 +43,5 @@
     }
   ],
   "review_count": 0,
-  "overlay": "00004ae7:22c44dc035ef616c"
+  "overlay": "00004ae6:aa2be95702361431"
 }
